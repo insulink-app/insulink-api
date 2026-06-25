@@ -93,13 +93,14 @@ public class SignUpController extends AuthenticationController {
     String deviceName, String settings
   ) {
     var processes = Lists.<CompletableFuture<Void>>newArrayList();
-    var user = User.create(id, name, hashing.hash(password), language, compliant,
-      System.currentTimeMillis());
+    var time = System.currentTimeMillis();
+    var user = User.create(id, name, hashing.hash(password), language,
+      compliant, time);
     var device = UserDevice.create(deviceId, id, publicDeviceId, operatingSystem,
-      operatingSystemVersion, deviceBrand, deviceModel, deviceName);
+      operatingSystemVersion, deviceBrand, deviceModel, deviceName, time);
     processes.add(userRepository().save(user).thenApply(_ -> null));
     processes.add(deviceRepository.save(device).thenApply(_ -> null));
-    processes.add(settingsRepository.save(UserSettings.create(id, settings))
+    processes.add(settingsRepository.save(UserSettings.create(id, settings, time))
       .thenApply(_ -> null));
     return AsyncIterator.execute(processes, process -> process)
       .thenApply(_ -> user);

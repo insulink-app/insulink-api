@@ -32,12 +32,12 @@ public final class UserSession {
   private String country;
   @Column(name = "city")
   private String city;
-  @Column(name = "open_time", nullable = false)
-  private long openTime;
+  @Column(name = "opened_at", nullable = false)
+  private long openedAt;
   @Column(name = "refresh_token")
   private String lastRefreshToken;
-  @Column(name = "last_refresh")
-  private long lastRefresh;
+  @Column(name = "last_refreshed_at")
+  private long lastRefreshedAt;
 
   public void close() {
     this.status = UserSessionStatus.CLOSED;
@@ -45,7 +45,7 @@ public final class UserSession {
 
   public void updateRefreshToken(String refreshToken) {
     this.lastRefreshToken = refreshToken;
-    this.lastRefresh = System.currentTimeMillis();
+    this.lastRefreshedAt = System.currentTimeMillis();
   }
 }
 

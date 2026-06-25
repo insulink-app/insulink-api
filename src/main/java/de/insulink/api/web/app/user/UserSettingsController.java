@@ -53,7 +53,8 @@ public final class UserSettingsController extends AppRestController {
     if (!isValidJson(content)) {
       return ApiResponse.error(1000).future();
     }
-    var settings = UserSettings.create(findUserId(request), content);
+    var settings = UserSettings.create(findUserId(request), content,
+      System.currentTimeMillis());
     return settingsRepository.save(settings).thenApply(_ -> ApiResponse.success());
   }
 

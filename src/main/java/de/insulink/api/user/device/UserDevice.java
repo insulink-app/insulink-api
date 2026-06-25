@@ -36,4 +36,6 @@ public final class UserDevice {
   private String deviceModel;
   @Column(name = "device_name", nullable = false)
   private String deviceName;
+  @Column(name = "registered_at", nullable = false, updatable = false)
+  private long registeredAt;
 }

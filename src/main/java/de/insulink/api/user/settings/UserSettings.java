@@ -21,4 +21,6 @@ public final class UserSettings {
   private UUID userId;
   @Column(name = "content", nullable = false)
   private String content;
+  @Column(name = "last_updated_at")
+  private long lastUpdatedAt;
 }
