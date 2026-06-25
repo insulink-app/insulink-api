@@ -23,7 +23,15 @@ public final class Sensor {
   private UUID userId;
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false, updatable = false)
-  private String type;
+  private SensorType type;
   @Column(name = "data", nullable = false, updatable = false)
   private String data;
+  @Column(name = "registered_at", nullable = false, updatable = false)
+  private long registeredAt;
+  @Column(name = "expires_at", nullable = false)
+  private long expiresAt;
+
+  public void updateData(String newData) {
+    this.data = newData;
+  }
 }
