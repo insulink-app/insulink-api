@@ -22,10 +22,10 @@ public final class User {
   @Id
   @Column(name = "id", nullable = false, updatable = false)
   private UUID id;
-  @Column(name = "phone_number", unique = true, nullable = false)
-  private String phoneNumber;
-  @Column(name = "name", nullable = false)
+  @Column(name = "name", nullable = false, unique = true)
   private String name;
+  @Column(name = "password", nullable = false)
+  private String password;
   @Column(name = "language", nullable = false)
   private String language;
   @Column(name = "compliant", nullable = false)

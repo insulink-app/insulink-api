@@ -1,11 +1,11 @@
 package de.insulink.api.web.app.user;
 
+import de.insulink.api.user.User;
+import de.insulink.api.user.UserRepository;
 import de.insulink.api.web.request.ApiRequestBody;
 import de.insulink.api.web.response.ApiResponse;
 import de.insulink.api.web.security.app.AppEndpoint;
 import de.insulink.api.web.security.app.AppRestController;
-import de.insulink.api.user.User;
-import de.insulink.api.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;

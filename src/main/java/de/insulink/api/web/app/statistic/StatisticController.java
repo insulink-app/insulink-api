@@ -1,13 +1,13 @@
 package de.insulink.api.web.app.statistic;
 
-import de.insulink.api.web.request.ApiRequestBody;
-import de.insulink.api.web.security.app.AppRestController;
 import de.insulink.api.statistic.StatisticConfiguration;
 import de.insulink.api.statistic.installation.AppInstallation;
 import de.insulink.api.statistic.installation.AppInstallationRepository;
 import de.insulink.api.statistic.opening.AppOpening;
 import de.insulink.api.statistic.opening.AppOpeningRepository;
 import de.insulink.api.user.UserRepository;
+import de.insulink.api.web.request.ApiRequestBody;
+import de.insulink.api.web.security.app.AppRestController;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.RequestBody;

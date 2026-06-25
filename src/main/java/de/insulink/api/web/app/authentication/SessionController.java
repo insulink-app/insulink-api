@@ -1,12 +1,13 @@
 package de.insulink.api.web.app.authentication;
 
-import de.insulink.api.web.request.ApiRequestBody;
-import de.insulink.api.web.response.ApiResponse;
-import de.insulink.api.web.security.app.AppEndpoint;
+import com.maxmind.geoip2.DatabaseReader;
 import de.insulink.api.user.User;
 import de.insulink.api.user.UserRepository;
 import de.insulink.api.user.session.UserSession;
 import de.insulink.api.user.session.UserSessionRepository;
+import de.insulink.api.web.request.ApiRequestBody;
+import de.insulink.api.web.response.ApiResponse;
+import de.insulink.api.web.security.app.AppEndpoint;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,16 +24,14 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 public final class SessionController extends AuthenticationController {
-  private final UserSessionRepository sessionRepository;
-
   private SessionController(
-    @Qualifier("verificationKey") Key verificationKey,
     @Qualifier("authenticationKey") Key authenticationKey,
     @Qualifier("refreshKey") Key refreshKey,
-    UserRepository userRepository, UserSessionRepository sessionRepository
+    UserRepository userRepository, UserSessionRepository sessionRepository,
+    DatabaseReader geoDatabaseReader
   ) {
-    super(verificationKey, authenticationKey, refreshKey, userRepository);
-    this.sessionRepository = sessionRepository;
+    super(authenticationKey, refreshKey, userRepository, sessionRepository,
+      geoDatabaseReader);
   }
 
   @RequestMapping(path = "/refresh/", method = RequestMethod.POST)
@@ -48,7 +47,7 @@ public final class SessionController extends AuthenticationController {
     var userId = UUID.fromString(result.get("id", String.class));
     var sessionId = UUID.fromString(result.get("session", String.class));
     return userRepository().existsById(userId)
-      .thenCompose(userExists -> sessionRepository.existsById(sessionId)
+      .thenCompose(userExists -> sessionRepository().existsById(sessionId)
         .thenCompose(sessionExists -> refresh(refreshToken, userId,
           sessionId, userExists, sessionExists)));
   }
@@ -61,7 +60,7 @@ public final class SessionController extends AuthenticationController {
       return ApiResponse.error(1001).future();
     }
     return userRepository().findById(userId)
-      .thenCompose(user -> sessionRepository.findById(sessionId)
+      .thenCompose(user -> sessionRepository().findById(sessionId)
         .thenApply(session -> refresh(refreshToken,
           user.get(), session.get())));
   }
@@ -77,7 +76,7 @@ public final class SessionController extends AuthenticationController {
     var newAuthenticationToken = generateAuthenticationToken(user.id(), session.id());
     var newRefreshToken = generateRefreshToken(user.id(), session.id());
     session.updateRefreshToken(newRefreshToken);
-    sessionRepository.save(session);
+    sessionRepository().save(session);
     return ApiResponse.success(Map.of(
       "authentication_token", newAuthenticationToken,
       "refresh_token", newRefreshToken));
@@ -92,13 +91,13 @@ public final class SessionController extends AuthenticationController {
       .exceptionally(_ -> null)
       .thenCompose(user -> user == null ?
         CompletableFuture.completedFuture(null) :
-        sessionRepository.findById(sessionId).thenApply(Optional::get)
+        sessionRepository().findById(sessionId).thenApply(Optional::get)
           .thenCompose(this::closeSession));
   }
 
   private CompletableFuture<Void> closeSession(UserSession session) {
     session.close();
-    return sessionRepository.save(session).thenApply(_ -> null);
+    return sessionRepository().save(session).thenApply(_ -> null);
   }
 
   @AppEndpoint
