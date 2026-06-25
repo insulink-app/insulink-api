@@ -9,6 +9,8 @@ import de.insulink.api.user.UserRepository;
 import de.insulink.api.user.device.UserDevice;
 import de.insulink.api.user.device.UserDeviceRepository;
 import de.insulink.api.user.session.UserSessionRepository;
+import de.insulink.api.user.settings.UserSettings;
+import de.insulink.api.user.settings.UserSettingsRepository;
 import de.insulink.api.web.request.ApiRequestBody;
 import de.insulink.api.web.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 public class SignUpController extends AuthenticationController {
   private final UserDeviceRepository deviceRepository;
+  private final UserSettingsRepository settingsRepository;
   private final Hashing hashing;
 
   private SignUpController(
@@ -33,11 +36,13 @@ public class SignUpController extends AuthenticationController {
     @Qualifier("refreshKey") Key refreshKey,
     UserRepository userRepository, UserDeviceRepository deviceRepository,
     UserSessionRepository sessionRepository,
+    UserSettingsRepository settingsRepository,
     DatabaseReader geoDatabaseReader, Hashing hashing
   ) {
     super(authenticationKey, refreshKey, userRepository, sessionRepository,
       geoDatabaseReader);
     this.deviceRepository = deviceRepository;
+    this.settingsRepository = settingsRepository;
     this.hashing = hashing;
   }
 
@@ -78,14 +83,14 @@ public class SignUpController extends AuthenticationController {
         body.getString("device_id"), body.getString("operating_system"),
         body.getString("operating_system_version"),
         body.getString("device_brand"), body.getString("device_model"),
-        body.getString("device_name")));
+        body.getString("device_name"), body.getString("settings")));
   }
 
   private CompletableFuture<User> signUp(
     UUID id, String name, String password, String language, boolean compliant,
     UUID deviceId, String publicDeviceId, String operatingSystem,
     String operatingSystemVersion, String deviceBrand, String deviceModel,
-    String deviceName
+    String deviceName, String settings
   ) {
     var processes = Lists.<CompletableFuture<Void>>newArrayList();
     var user = User.create(id, name, hashing.hash(password), language, compliant,
@@ -94,6 +99,8 @@ public class SignUpController extends AuthenticationController {
       operatingSystemVersion, deviceBrand, deviceModel, deviceName);
     processes.add(userRepository().save(user).thenApply(_ -> null));
     processes.add(deviceRepository.save(device).thenApply(_ -> null));
+    processes.add(settingsRepository.save(UserSettings.create(id, settings))
+      .thenApply(_ -> null));
     return AsyncIterator.execute(processes, process -> process)
       .thenApply(_ -> user);
   }
