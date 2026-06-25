@@ -1,4 +1,10 @@
 package de.insulink.api.pump;
 
-public class PumpRepository {
+import de.insulink.api.database.DatabaseRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
+
+@Repository
+public interface PumpRepository extends DatabaseRepository<Pump, UUID> {
 }
