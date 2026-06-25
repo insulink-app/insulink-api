@@ -28,7 +28,7 @@ public final class Sensor {
   private String data;
   @Column(name = "registered_at", nullable = false, updatable = false)
   private long registeredAt;
-  @Column(name = "expires_at", nullable = false)
+  @Column(name = "expires_at", nullable = false, updatable = false)
   private long expiresAt;
 
   public void updateData(String newData) {

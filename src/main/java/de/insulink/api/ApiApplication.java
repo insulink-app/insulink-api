@@ -1,10 +1,10 @@
 package de.insulink.api;
 
-import de.insulink.api.web.WebConfiguration;
 import de.insulink.api.application.ApplicationLaunchEvent;
 import de.insulink.api.event.EventExecutor;
 import de.insulink.api.event.HookRegistry;
 import de.insulink.api.log.Log;
+import de.insulink.api.web.WebConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;

@@ -1,6 +1,9 @@
 package de.insulink.api.user.settings;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,6 +24,6 @@ public final class UserSettings {
   private UUID userId;
   @Column(name = "content", nullable = false)
   private String content;
-  @Column(name = "last_updated_at")
+  @Column(name = "last_updated_at", nullable = false)
   private long lastUpdatedAt;
 }

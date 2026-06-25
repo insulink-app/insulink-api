@@ -32,11 +32,11 @@ public final class UserSession {
   private String country;
   @Column(name = "city")
   private String city;
-  @Column(name = "opened_at", nullable = false)
+  @Column(name = "opened_at", nullable = false, updatable = false)
   private long openedAt;
-  @Column(name = "refresh_token")
+  @Column(name = "refresh_token", nullable = false)
   private String lastRefreshToken;
-  @Column(name = "last_refreshed_at")
+  @Column(name = "last_refreshed_at", nullable = false)
   private long lastRefreshedAt;
 
   public void close() {
