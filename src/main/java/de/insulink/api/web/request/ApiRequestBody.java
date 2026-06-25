@@ -105,6 +105,19 @@ public final class ApiRequestBody {
   }
 
   /**
+   * Is used to get a float from request body
+   * @param key The key to find the content
+   * @return The value behind the key
+   */
+  public float getFloat(String key) {
+    if (!body.has(key)) {
+      failure();
+      return -1;
+    }
+    return body.getFloat(key);
+  }
+
+  /**
    * Is used to get a long from request body
    * @param key The key to find the content
    * @return The value behind the key
