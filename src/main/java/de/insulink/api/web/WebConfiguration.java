@@ -19,9 +19,9 @@ public final class WebConfiguration implements Configuration {
 
   @Override
   public void load(INIConfiguration file) {
-    port = file.getInt("api.port");
-    authenticationKey = file.getString("api.authentication_key");
-    refreshKey = file.getString("api.refresh_key");
-    allowedOrigins = file.getList(String.class, "api.allowed_origins");
+    port = file.getInt("web.port");
+    authenticationKey = file.getString("web.authentication_key");
+    refreshKey = file.getString("web.refresh_key");
+    allowedOrigins = file.getList(String.class, "web.allowed_origins");
   }
 }
