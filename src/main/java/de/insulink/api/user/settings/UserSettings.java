@@ -22,7 +22,7 @@ public final class UserSettings {
   @Id
   @Column(name = "user_id", nullable = false)
   private UUID userId;
-  @Column(name = "content", nullable = false)
+  @Column(name = "content", nullable = false, columnDefinition = "TEXT")
   private String content;
   @Column(name = "last_updated_at", nullable = false)
   private long lastUpdatedAt;
