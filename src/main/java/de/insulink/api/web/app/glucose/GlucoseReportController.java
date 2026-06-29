@@ -47,6 +47,7 @@ public final class GlucoseReportController extends AppRestController {
     return glucoseRepository.findByUserId(userId)
       .thenCompose(existing -> saveEntries(userId, entries, existing));
   }
+
   private CompletableFuture<ApiResponse> saveEntries(
     UUID userId, List<ApiRequestBody> entries, List<GlucoseEntry> existing
   ) {
