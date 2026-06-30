@@ -1,7 +1,5 @@
 package de.insulink.api;
 
-import de.insulink.api.event.EventExecutor;
-import de.insulink.api.event.HookRegistry;
 import de.insulink.api.log.Log;
 import de.insulink.api.web.WebModule;
 import org.apache.commons.configuration2.INIConfiguration;
@@ -23,15 +21,5 @@ public class ApiModule {
   @Bean
   INIConfiguration configurationFile() throws Exception {
     return new Configurations().ini(new File("configurations/config.ini"));
-  }
-
-  @Bean
-  HookRegistry hookRegistry() {
-    return HookRegistry.create();
-  }
-
-  @Bean
-  EventExecutor eventExecutor(HookRegistry registry, Log log) {
-    return EventExecutor.create(registry, log);
   }
 }
