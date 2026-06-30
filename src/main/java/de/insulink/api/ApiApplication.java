@@ -1,13 +1,9 @@
 package de.insulink.api;
 
-import de.insulink.api.application.ApplicationLaunchEvent;
-import de.insulink.api.event.EventExecutor;
-import de.insulink.api.event.HookRegistry;
 import de.insulink.api.log.Log;
 import de.insulink.api.web.WebConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -33,19 +29,12 @@ public class ApiApplication {
         application.setDefaultProperties(Collections.singletonMap("server.port",
           apiConfiguration.port()));
         log.info("Booting Spring...");
-        var applicationContext = application.run(args);
-        var eventExecutor = applicationContext.getBean(EventExecutor.class);
-        registerHooks(applicationContext);
+        application.run(args);
         log.info("Spring successfully booted");
         log.info("Successfully booted Insulink - Api");
-        eventExecutor.execute(ApplicationLaunchEvent.create());
       } catch (Exception exception) {
         log.processError(exception);
       }
     }
-  }
-
-  private static void registerHooks(ConfigurableApplicationContext context) {
-    var hookRegistry = context.getBean(HookRegistry.class);
   }
 }
