@@ -12,5 +12,5 @@ import java.util.concurrent.CompletableFuture;
 public interface CardioTrainingRepository
   extends DatabaseRepository<CardioTraining, UUID> {
   @Async
-  CompletableFuture<List<CardioTraining>> findByUserIdOrderByStartMs(UUID userId);
+  CompletableFuture<List<CardioTraining>> findByUserIdOrderByStartedAt(UUID userId);
 }

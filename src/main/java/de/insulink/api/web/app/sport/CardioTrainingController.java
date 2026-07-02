@@ -43,7 +43,7 @@ public final class CardioTrainingController extends AppRestController {
   public CompletableFuture<ApiResponse> findTrainings(
     HttpServletRequest request
   ) {
-    return trainingRepository.findByUserIdOrderByStartMs(findUserId(request))
+    return trainingRepository.findByUserIdOrderByStartedAt(findUserId(request))
       .thenApply(trainings -> trainings.stream().map(this::information).toList())
       .thenApply(trainings -> ApiResponse.success(Map.of("trainings", trainings)));
   }
@@ -57,7 +57,7 @@ public final class CardioTrainingController extends AppRestController {
     var userId = findUserId(request);
     var fresh = ApiRequestBody.of(payload, response).getObjectList("trainings")
       .stream().map(entry -> training(userId, entry)).toList();
-    return trainingRepository.findByUserIdOrderByStartMs(userId)
+    return trainingRepository.findByUserIdOrderByStartedAt(userId)
       .thenCompose(existing ->
         SportCollection.create(trainingRepository).replace(existing, fresh));
   }
