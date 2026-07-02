@@ -57,6 +57,11 @@ Three JWT signing keys (`verificationKey`, `authenticationKey`, `refreshKey`) ar
 - **No comments inside method bodies.** Keep methods short enough to read on their
   own; put the explanation in a Javadoc `/** … */` ABOVE the method (as the
   existing controllers and `AppRestController` already do).
+- **All code comments in English.** Every comment and doc comment (`//`, `///`)
+  is written in English — no German (or other languages). Only user-facing
+  strings are localized (see below); the code itself, including its comments, is
+  English. If you touch a file with a German comment, translate it while you're
+  there.
 - **Short methods and classes.** Split when they grow; one job each. Rule of
   thumb: **no Java file over ~150 lines**, methods ideally **5–10 lines**. When a
   flow needs more, decompose into a chain of small private overloads rather than
