@@ -1,4 +1,4 @@
-package de.insulink.api.bolus;
+package de.insulink.api.insulin.bolus;
 
 import de.insulink.api.database.DatabaseRepository;
 import org.springframework.scheduling.annotation.Async;

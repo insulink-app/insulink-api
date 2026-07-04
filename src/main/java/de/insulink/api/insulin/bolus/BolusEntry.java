@@ -1,5 +1,6 @@
-package de.insulink.api.bolus;
+package de.insulink.api.insulin.bolus;
 
+import de.insulink.api.insulin.InsulinType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

@@ -1,4 +1,4 @@
-package de.insulink.api.bolus;
+package de.insulink.api.insulin;
 
 public enum InsulinType {
   FAST_ACTING,
