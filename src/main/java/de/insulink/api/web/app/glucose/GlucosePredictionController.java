@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +47,12 @@ public final class GlucosePredictionController extends AppRestController {
     if (horizon == 0) {
       return ApiResponse.error(1500, "horizon must be 30 or 60").future();
     }
+    // The client's freshest reading, passed inline because the background report
+    // that syncs it to the DB is debounced and can arrive AFTER this request —
+    // so without it the forecast would anchor to the previous reading.
+    var latest = parseLatest(request);
     return glucoseRepository.findByUserId(findUserId(request))
-      .thenApply(this::recentReadings)
+      .thenApply(entries -> recentReadings(entries, latest))
       .thenCompose(readings -> predictionClient.predict(readings, horizon))
       .thenApply(this::predictionResponse)
       .exceptionally(_ -> ApiResponse.error(1501, "prediction unavailable"));
@@ -61,9 +66,28 @@ public final class GlucosePredictionController extends AppRestController {
     return value == null || "30".equals(value) ? 30 : 0;
   }
 
-  private List<GlucoseEntry> recentReadings(List<GlucoseEntry> entries) {
-    var newest = entries.stream().mapToLong(GlucoseEntry::recordedAt).max().orElse(0L);
-    return entries.stream()
+  /** The client's current reading from the value/time query params, or null. */
+  private GlucoseEntry parseLatest(HttpServletRequest request) {
+    var value = request.getParameter("value");
+    var time = request.getParameter("time");
+    if (value == null || time == null) {
+      return null;
+    }
+    try {
+      return GlucoseEntry.create(null, null, Float.parseFloat(value), Long.parseLong(time));
+    } catch (NumberFormatException exception) {
+      return null;
+    }
+  }
+
+  private List<GlucoseEntry> recentReadings(List<GlucoseEntry> entries, GlucoseEntry latest) {
+    var combined = new ArrayList<>(entries);
+    if (latest != null
+      && entries.stream().noneMatch(entry -> entry.recordedAt() == latest.recordedAt())) {
+      combined.add(latest);
+    }
+    var newest = combined.stream().mapToLong(GlucoseEntry::recordedAt).max().orElse(0L);
+    return combined.stream()
       .filter(entry -> entry.recordedAt() >= newest - HISTORY_WINDOW_MS)
       .sorted(Comparator.comparingLong(GlucoseEntry::recordedAt))
       .toList();
