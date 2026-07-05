@@ -25,6 +25,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  # Internal glucose-forecast service (insulink-predictor sibling repo). Not
+  # published — only the api reaches it at http://predictor:8000 (see the
+  # [prediction] section in configurations/config.ini). Train the model on the
+  # host and mount it read-only; restart this service to pick up a retrain.
+  predictor:
+    build: ./predictor
+    container_name: insulink-predictor
+    restart: always
+    volumes:
+      - ./predictor/artifacts:/app/artifacts:ro
+    expose:
+      - "8000"
   proxy:
     image: nginx:alpine
     volumes:
