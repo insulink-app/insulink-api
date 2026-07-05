@@ -37,6 +37,10 @@ public final class User {
     this.name = newName;
   }
 
+  public void changePassword(String newPassword) {
+    this.password = newPassword;
+  }
+
   public void changeLanguage(String newLanguage) {
     this.language = newLanguage;
   }

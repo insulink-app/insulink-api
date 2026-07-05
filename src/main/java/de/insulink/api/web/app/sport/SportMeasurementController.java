@@ -18,13 +18,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * The user's body/activity measurements (steps, distance, calories, weight).
- * {@code find} returns them all; {@code sync} replaces the user's set with the
- * app's complete current list (the app owns deletions).
+ * {@code find} returns them all; {@code sync} merges the pushed entries by natural
+ * key (type + timestamp) — inserting new ones and updating changed ones without
+ * deleting, so an import never destroys existing history; {@code delete} removes
+ * exactly the entries the app names.
  */
 @RestController
 public final class SportMeasurementController extends AppRestController {
@@ -59,7 +63,29 @@ public final class SportMeasurementController extends AppRestController {
     var fresh = ApiRequestBody.of(payload, response).getObjectList("entries")
       .stream().map(entry -> measurement(userId, entry)).toList();
     return measurementRepository.findByUserId(userId).thenCompose(existing ->
-      SportCollection.create(measurementRepository).replace(existing, fresh));
+      MeasurementSync.create(measurementRepository).merge(existing, fresh));
+  }
+
+  /**
+   * Deletes the named entries for the user — each identified by its type and
+   * timestamp — and nothing else, so removing one entry never touches the rest.
+   */
+  @AppEndpoint
+  @RequestMapping(path = "/sport/measurements/delete/", method = RequestMethod.POST)
+  public CompletableFuture<ApiResponse> deleteMeasurements(
+    HttpServletRequest request, @RequestBody String payload,
+    HttpServletResponse response
+  ) {
+    var userId = findUserId(request);
+    var targets = ApiRequestBody.of(payload, response).getObjectList("entries")
+      .stream().map(this::deletionKey).collect(Collectors.toSet());
+    return measurementRepository.findByUserId(userId).thenCompose(existing ->
+      MeasurementSync.create(measurementRepository).remove(existing, targets));
+  }
+
+  private MeasurementSync.MeasurementKey deletionKey(ApiRequestBody entry) {
+    return MeasurementSync.MeasurementKey.of(
+      SportMeasurementType.valueOf(entry.getString("type")), entry.getLong("time"));
   }
 
   private SportMeasurement measurement(UUID userId, ApiRequestBody entry) {

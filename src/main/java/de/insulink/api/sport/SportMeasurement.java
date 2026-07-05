@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,7 +20,8 @@ import java.util.UUID;
  * in kg) as a value + timestamp — the activity counterpart of a glucose reading.
  */
 @Entity
-@Table(name = "sport_measurements")
+@Table(name = "sport_measurements", uniqueConstraints = @UniqueConstraint(
+  name = "uq_sport_measurement", columnNames = {"user_id", "type", "recorded_at"}))
 @Getter
 @Accessors(fluent = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -33,7 +35,7 @@ public final class SportMeasurement {
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false, updatable = false)
   private SportMeasurementType type;
-  @Column(name = "value", nullable = false, updatable = false)
+  @Column(name = "value", nullable = false)
   private double value;
   @Column(name = "recorded_at", nullable = false, updatable = false)
   private long recordedAt;
