@@ -10,12 +10,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Calls the internal Python forecast service (insulink-predictor). Sends the
- * user's recent readings and returns the parsed prediction reply. Stateless —
- * the model lives in the Python sidecar; this only shuttles JSON.
+ * Calls the internal Python forecast service (insulink-predictor). The service
+ * pulls the user's glucose history from the DB itself; this only forwards the
+ * user id and the freshest reading(s) not yet ingested, and returns the parsed
+ * reply. Stateless — the model lives in the Python sidecar; this shuttles JSON.
  */
 @RequiredArgsConstructor(staticName = "create")
 public final class PredictionClient {
@@ -24,9 +26,9 @@ public final class PredictionClient {
   private final PredictionConfiguration configuration;
 
   public CompletableFuture<JSONObject> predict(
-    List<GlucoseEntry> readings, int horizon
+    UUID userId, List<GlucoseEntry> readings, int horizon
   ) {
-    var body = requestBody(readings, horizon).toString();
+    var body = requestBody(userId, readings, horizon).toString();
     var request = HttpRequest.newBuilder()
       .uri(URI.create(configuration.serviceUrl() + "/predict"))
       .header("Content-Type", "application/json")
@@ -36,12 +38,15 @@ public final class PredictionClient {
       .thenApply(response -> new JSONObject(response.body()));
   }
 
-  private JSONObject requestBody(List<GlucoseEntry> readings, int horizon) {
+  private JSONObject requestBody(UUID userId, List<GlucoseEntry> readings, int horizon) {
     var array = new JSONArray();
     for (var reading : readings) {
       array.put(new JSONObject().put("ts", reading.recordedAt())
         .put("mgdl", reading.value()));
     }
-    return new JSONObject().put("readings", array).put("horizon_min", horizon);
+    return new JSONObject()
+      .put("user_id", userId.toString())
+      .put("readings", array)
+      .put("horizon_min", horizon);
   }
 }

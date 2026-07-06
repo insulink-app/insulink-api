@@ -33,10 +33,19 @@ services:
     build: ./predictor
     container_name: insulink-predictor
     restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Reach Postgres over the compose network (service name "postgres", port 5432).
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/insulink
+      MODELS_DIR: /app/artifacts/models   # per-user models (locally-mounted path)
+      ENABLE_SCHEDULER: "true"
+      RETRAIN_HOUR: "3"
+    ports:
+      - "8000:8000"
     volumes:
-      - ./predictor/artifacts:/app/artifacts:ro
-    expose:
-      - "8000"
+      - ./predictor/artifacts:/app/artifacts
   proxy:
     image: nginx:alpine
     volumes:
