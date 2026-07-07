@@ -24,7 +24,7 @@ public final class Sensor {
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false, updatable = false)
   private SensorType type;
-  @Column(name = "data", nullable = false, updatable = false)
+  @Column(name = "data", nullable = false, updatable = false, columnDefinition = "TEXT")
   private String data;
   @Column(name = "registered_at", nullable = false, updatable = false)
   private long registeredAt;
