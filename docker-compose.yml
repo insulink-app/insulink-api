@@ -46,6 +46,16 @@ services:
       - "8000:8000"
     volumes:
       - ./predictor/artifacts:/app/artifacts
+  # Admin panel (insulink-panel sibling repo). Serves the built React app and
+  # proxies /v1/ to the api itself; the public proxy only terminates TLS for it.
+  panel:
+    build: ./panel
+    container_name: insulink-panel
+    restart: always
+    environment:
+      CORE_URL: http://api:8080
+    depends_on:
+      - api
   proxy:
     image: nginx:alpine
     volumes:
