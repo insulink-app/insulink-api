@@ -1,0 +1,20 @@
+{
+  "greeting": "Hallo",
+  "profile": {
+    "glucose": {
+      "_": "Glukose",
+      "target": "Zielwert",
+      "unit": {
+        "_": "Einheit",
+        "mgdl": "mg/dL"
+      }
+    },
+    "name": "Name"
+  },
+  "reminder": {
+    "in_minutes": "In {0} Minuten"
+  },
+  "limits": {
+    "max_entries": 50
+  }
+}
