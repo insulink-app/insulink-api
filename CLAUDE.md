@@ -54,6 +54,12 @@ Three JWT signing keys (`verificationKey`, `authenticationKey`, `refreshKey`) ar
   loaders like `Locale.createAndLoad(...)`, `ApiResponse.success()/error(...)`, and
   `ApiRequestBody.of(...)`. Use `new` only inside those factories.
 - **No one-line `if`s.** Always use braces, even for a single statement.
+- **No brace-block lambdas.** A lambda body stays a single expression — never a
+  `{ … }` block, and especially never one with a `return` inside. When the body
+  needs statements, extract it into a named private method and pass a
+  method/expression reference instead (e.g. `.thenApply(items -> itemsResponse(...))`,
+  not `.thenApply(items -> { … return …; })`). This keeps the async chains
+  readable and the logic testable; it's how every existing controller is written.
 - **No comments inside method bodies.** Keep methods short enough to read on their
   own; put the explanation in a Javadoc `/** … */` ABOVE the method (as the
   existing controllers and `AppRestController` already do).
