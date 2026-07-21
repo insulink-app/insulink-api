@@ -12,4 +12,7 @@ import java.util.concurrent.CompletableFuture;
 public interface InventoryItemRepository extends DatabaseRepository<InventoryItem, UUID> {
   @Async
   CompletableFuture<List<InventoryItem>> findByUserId(UUID userId);
+
+  @Async
+  CompletableFuture<List<InventoryItem>> findByUserIdOrderByOrderIndex(UUID userId);
 }

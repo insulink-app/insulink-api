@@ -54,4 +54,6 @@ public final class InventoryItem {
   @Enumerated(EnumType.STRING)
   @Column(name = "pump_brand", updatable = false)
   private PumpBrand pumpBrand;
+  @Column(name = "order_index", nullable = false, updatable = false)
+  private int orderIndex;
 }

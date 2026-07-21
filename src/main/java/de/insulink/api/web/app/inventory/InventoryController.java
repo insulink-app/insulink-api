@@ -56,8 +56,8 @@ public final class InventoryController extends AppRestController {
   @RequestMapping(path = "/inventory/items/find/", method = RequestMethod.GET)
   public CompletableFuture<ApiResponse> findItems(HttpServletRequest request) {
     var userId = findUserId(request);
-    return inventoryItemRepository.findByUserId(userId).thenCompose(items ->
-      inventoryDeliveryRepository.findByUserId(userId)
+    return inventoryItemRepository.findByUserIdOrderByOrderIndex(userId)
+      .thenCompose(items -> inventoryDeliveryRepository.findByUserId(userId)
         .thenApply(deliveries -> itemsResponse(items, deliveries)));
   }
 
@@ -81,9 +81,11 @@ public final class InventoryController extends AppRestController {
     var userId = findUserId(request);
     var items = new ArrayList<InventoryItem>();
     var deliveries = new ArrayList<InventoryDelivery>();
-    for (var entry : ApiRequestBody.of(payload, response).getObjectList("items")) {
+    var entries = ApiRequestBody.of(payload, response).getObjectList("items");
+    for (var index = 0; index < entries.size(); index++) {
+      var entry = entries.get(index);
       var itemId = UUID.randomUUID();
-      items.add(item(itemId, userId, entry));
+      items.add(item(itemId, userId, entry, index));
       for (var delivery : entry.getObjectList("deliveries")) {
         deliveries.add(delivery(userId, itemId, delivery));
       }
@@ -107,16 +109,23 @@ public final class InventoryController extends AppRestController {
           .thenApply(_ -> ApiResponse.success())));
   }
 
-  private InventoryItem item(UUID id, UUID userId, ApiRequestBody entry) {
+  private InventoryItem item(
+    UUID id, UUID userId, ApiRequestBody entry, int orderIndex
+  ) {
     return InventoryItem.create(id, userId, entry.getString("id"),
       entry.getString("name"), entry.getInt("stock"), entry.getInt("base_stock"),
       entry.getDouble("days_per_unit"), entry.getLong("anchor_ms"),
       InventoryItemType.fromKey(entry.getString("type")),
-      entry.has("sensor_brand") ? SensorBrand.fromKey(entry.getString("sensor_brand")) : null,
-      entry.has("pump_brand") ? PumpBrand.fromKey(entry.getString("pump_brand")) : null);
+      entry.has("sensor_brand") ?
+        SensorBrand.fromKey(entry.getString("sensor_brand")) : null,
+      entry.has("pump_brand") ?
+        PumpBrand.fromKey(entry.getString("pump_brand")) : null,
+      orderIndex);
   }
 
-  private InventoryDelivery delivery(UUID userId, UUID itemId, ApiRequestBody entry) {
+  private InventoryDelivery delivery(
+    UUID userId, UUID itemId, ApiRequestBody entry
+  ) {
     return InventoryDelivery.create(UUID.randomUUID(), userId, itemId,
       entry.getLong("at"), entry.getInt("quantity"));
   }
