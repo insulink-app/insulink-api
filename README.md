@@ -93,12 +93,26 @@ tour:
 ```bash
 ./gradlew test                                                       # all tests
 ./gradlew test --tests "de.insulink.api.iterator.AsyncIteratorTest"  # a single test
+./gradlew jacocoTestReport                                           # coverage → build/reports/jacoco
 ```
 
-Tests are plain JUnit — no Spring context, no database, no mocking framework — so
-they stay fast. The covered pieces are the ones every request routes through: the
-async batching in `iterator/`, the request/response edge (`ApiRequestBody`,
-`ApiResponse`), locale flattening and platform detection.
+Two kinds of test, no database in either:
+
+- **Plain JUnit** for the pieces every request routes through — the async
+  batching in `iterator/`, the request/response edge (`ApiRequestBody`,
+  `ApiResponse`), locale flattening, platform detection, and the sync
+  reconcilers (`MeasurementSync`, `PulseSampleSync`).
+- **Sliced MockMvc tests** for the endpoints. `@AppControllerTest(Xyz.class)`
+  (in `src/test/.../web/`) boots one controller with a real signing key from
+  `TestAuthentication` and no servlet filters; repositories come in as
+  `@MockitoBean`. Endpoints return `CompletableFuture`, so requests go through
+  `AsyncEndpoint.on(mockMvc).call(...)`, which does the second dispatch. The two
+  filters have their own tests, since their status codes (`417` refresh, `403`
+  clear session) are contract.
+
+Coverage is reported to [Codecov](https://codecov.io/github/insulink-app/insulink-api)
+from the JaCoCo XML on every CI run; `codecov.yml` asks for no drop on a pull
+request rather than an absolute number.
 
 ## Contributions
 

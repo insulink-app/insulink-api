@@ -1,0 +1,19 @@
+# Coverage is a signal, not a gate: a pull request fails when it drops what is
+# already covered, not for missing an absolute number. The web layer is what the
+# tests are for — everything below is entities, Spring wiring and startup code
+# that a slice test would only cover by accident.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+
+ignore:
+  - "**/*Module.java"
+  - "**/*Configuration.java"
+  - "src/main/java/de/insulink/api/ApiApplication.java"

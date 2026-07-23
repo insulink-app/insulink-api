@@ -12,6 +12,7 @@ Spring Boot 4 backend (Java 25) serving the app's REST API. All endpoints live u
 ./gradlew build                                              # compile + test
 ./gradlew test                                               # all tests
 ./gradlew test --tests "de.insulink.api.iterator.AsyncIteratorTest"   # single test
+./gradlew jacocoTestReport                                   # coverage report (XML goes to Codecov in CI)
 ./gradlew bootRun                                            # run locally (needs config.ini + Postgres)
 ./gradlew downloadGeoLite2Database                           # fetch geo/GeoLite2-City.mmdb (needs GEOLITE2_LICENSE_KEY)
 docker compose up                                            # Postgres + app + nginx/certbot proxy
@@ -42,6 +43,28 @@ Three JWT signing keys (`verificationKey`, `authenticationKey`, `refreshKey`) ar
 **API conventions.** Inbound JSON is parsed with `ApiRequestBody.of(payload, response)` — use `getString` / `getBoolean` / `getSanitizedString` (the sanitized variant runs the OWASP HTML sanitizer; use it for any user-displayed free text). Responses use `ApiResponse.success(map)` / `ApiResponse.error(code)`, where `error` codes are app-specific integers (e.g. `1000`, `1001`); call `.future()` to wrap in a completed `CompletableFuture`.
 
 **i18n.** `locale/*.json` (`de`, `en`) loaded via `Locales`; resolve strings through `Locale`/`LocaleString`/`Translation`.
+
+## Testing an endpoint
+
+Controller tests are MockMvc slices, one controller each. Annotate with
+`@AppControllerTest(SomeController.class)` (`src/test/.../web/`): it boots that
+controller alone, imports `TestAuthentication` for the `authenticationKey` /
+`refreshKey` beans, and excludes both servlet filters (they run off `config.ini`
+and the reflected endpoint list, and have their own tests). Repositories are
+`@MockitoBean`.
+
+- Build the `Authorization` header with `TestAuthentication.bearer(userId)` —
+  the controller parses a real JWT, so a wrong or expired one behaves as it
+  would in production (`bearerWithWrongSignature`, `expiredBearer` exist for
+  that).
+- Endpoints return `CompletableFuture`, which MockMvc leaves unfinished. Always
+  go through `AsyncEndpoint.on(mockMvc).call(requestBuilder)`, never
+  `mockMvc.perform` directly.
+- Mockito stubs `DatabaseRepository`'s default methods too, so
+  `generateAvailableId` hands back a `null` id unless it is stubbed. Stub it
+  whenever the controller puts the generated id into the response.
+- Pure logic (the sync reconcilers, `LogFormat`, the enums) gets a plain JUnit
+  test with no context at all — prefer that whenever the class allows it.
 
 ## Code style (follow these — they override default habits)
 
