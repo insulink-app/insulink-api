@@ -35,6 +35,12 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/reports/jacoco/test/jacocoTestReport.xml
+
       # The build step only prints failures into the log, where they scroll away.
       # Keep the reports so a red run can still be read afterwards — only on
       # failure, since green runs have nothing to read and just burn artifact quota.
