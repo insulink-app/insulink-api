@@ -7,9 +7,9 @@ talk to: accounts and sessions, the glucose/insulin/nutrition/sport history behi
 the dashboards, and the plumbing to the forecast service. Spring Boot 4 on Java 25,
 backed by Postgres. All endpoints live under the `/v1` path.
 
-|      | Build Status                                                                                                                                                                            |
-|------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| main | [![Java CI with Gradle](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml/badge.svg?branch=main)](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml) |
+|      | Build Status                                                                                                                                                                                         | Coverage                                                                                                                                                |
+|------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| main | [![Java CI with Gradle](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml/badge.svg?branch=main)](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml) | [![codecov](https://codecov.io/github/insulink-app/insulink-api/graph/badge.svg?token=Y2ZV4S3A9N)](https://codecov.io/github/insulink-app/insulink-api) |
 
 > ⚠️ **Use at your own risk.** Insulink is an interoperability and research
 > project, **not a medical device**. It is a companion for curious people, never

@@ -4,6 +4,7 @@ import java.util.zip.GZIPInputStream
 
 plugins {
   id("java")
+  id("jacoco")
   id("org.springframework.boot") version "4.1.0"
   id("io.freefair.lombok") version "9.5.0"
 }
@@ -58,6 +59,15 @@ dependencies {
 
 tasks.test {
   useJUnitPlatform()
+  finalizedBy(tasks.jacocoTestReport)
+}
+
+// Codecov reads the XML report; the HTML one is only useful locally.
+tasks.jacocoTestReport {
+  dependsOn(tasks.test)
+  reports {
+    xml.required = true
+  }
 }
 
 tasks.bootJar {

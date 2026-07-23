@@ -29,6 +29,7 @@ public final class LivePulseCache {
   public static final long MAX_AGE_MS = 30_000L;
 
   private final ConcurrentHashMap<UUID, LivePulse> readings = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<UUID, Long> watchedAt = new ConcurrentHashMap<>();
 
   /**
    * Takes the phone's newest reading, replacing whatever it last pushed. Stamped
@@ -41,9 +42,11 @@ public final class LivePulseCache {
   /**
    * The user's current reading, empty when the band went quiet. Evicts on the
    * way out, so a user who stopped pushing is forgotten rather than kept as a
-   * stale entry nobody reads again.
+   * stale entry nobody reads again. A read also marks a live viewer, so the
+   * phone can relay at 1 Hz only while something is actually watching.
    */
   public Optional<LivePulse> find(UUID userId) {
+    watchedAt.put(userId, System.currentTimeMillis());
     var pulse = readings.get(userId);
     if (pulse == null) {
       return Optional.empty();
@@ -53,5 +56,24 @@ public final class LivePulseCache {
       return Optional.empty();
     }
     return Optional.of(pulse);
+  }
+
+  /**
+   * Whether any device polled {@link #find} within {@link #MAX_AGE_MS} — i.e. a
+   * live viewer (the panel's running-routine vitals bar) is currently watching.
+   * The phone reads this off its push response to decide between a 1 Hz relay
+   * and a slow keepalive, so it only pins the radio up while someone looks. Only
+   * the panel ever reads, so a viewer is never the pushing phone itself.
+   */
+  public boolean isWatched(UUID userId) {
+    var at = watchedAt.get(userId);
+    if (at == null) {
+      return false;
+    }
+    if (System.currentTimeMillis() - at > MAX_AGE_MS) {
+      watchedAt.remove(userId, at);
+      return false;
+    }
+    return true;
   }
 }
