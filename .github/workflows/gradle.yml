@@ -74,5 +74,9 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
 
+      # Only submit — the action's default also uploads the graph JSON as a
+      # workflow artifact, which is dead weight and eats the storage quota.
       - name: Submit dependency graph
         uses: gradle/actions/dependency-submission@v6
+        with:
+          dependency-graph: generate-and-submit
