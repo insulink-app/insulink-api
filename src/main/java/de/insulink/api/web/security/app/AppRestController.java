@@ -2,10 +2,8 @@ package de.insulink.api.web.security.app;
 
 import de.insulink.api.user.User;
 import de.insulink.api.user.UserRepository;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -84,33 +82,5 @@ public class AppRestController {
    */
   protected String findApiKey(HttpServletRequest request) {
     return request.getHeader("Authorization").replace("Bearer ", "");
-  }
-
-  /**
-   * Checks whether the request has an Authorization header
-   * @param request The request
-   * @return Whether there is an Authorization header
-   */
-  protected boolean hasAuthorization(HttpServletRequest request) {
-    return request.getHeader("Authorization") != null;
-  }
-
-  /**
-   * Checks whether an api key is valid
-   * @param apiKey The api key
-   * @return The http status
-   */
-  protected int checkApiKey(String apiKey) {
-    try {
-      Jwts.parser()
-        .setSigningKey(authenticationKey)
-        .build()
-        .parseClaimsJws(apiKey);
-      return HttpServletResponse.SC_ACCEPTED;
-    } catch (ExpiredJwtException exception) {
-      return HttpServletResponse.SC_EXPECTATION_FAILED;
-    } catch (Exception exception) {
-      return HttpServletResponse.SC_FORBIDDEN;
-    }
   }
 }
