@@ -43,4 +43,14 @@ final class LivePulseCacheTest {
     cache.record(runner, 88);
     Assertions.assertTrue(cache.find(UUID.randomUUID()).isEmpty());
   }
+
+  @Test
+  void noViewerUntilSomeoneReads() {
+    var cache = new LivePulseCache();
+    var userId = UUID.randomUUID();
+    cache.record(userId, 88);
+    Assertions.assertFalse(cache.isWatched(userId));
+    cache.find(userId);
+    Assertions.assertTrue(cache.isWatched(userId));
+  }
 }

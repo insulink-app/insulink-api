@@ -7,9 +7,9 @@ talk to: accounts and sessions, the glucose/insulin/nutrition/sport history behi
 the dashboards, and the plumbing to the forecast service. Spring Boot 4 on Java 25,
 backed by Postgres. All endpoints live under the `/v1` path.
 
-|      | Build Status                                                                                                                                                                            |
-|------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| main | [![Java CI with Gradle](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml/badge.svg?branch=main)](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml) |
+|      | Build Status                                                                                                                                                                                         | Coverage                                                                                                                                                |
+|------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| main | [![Java CI with Gradle](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml/badge.svg?branch=main)](https://github.com/insulink-app/insulink-api/actions/workflows/gradle.yml) | [![codecov](https://codecov.io/github/insulink-app/insulink-api/graph/badge.svg?token=Y2ZV4S3A9N)](https://codecov.io/github/insulink-app/insulink-api) |
 
 > ⚠️ **Use at your own risk.** Insulink is an interoperability and research
 > project, **not a medical device**. It is a companion for curious people, never
@@ -93,12 +93,26 @@ tour:
 ```bash
 ./gradlew test                                                       # all tests
 ./gradlew test --tests "de.insulink.api.iterator.AsyncIteratorTest"  # a single test
+./gradlew jacocoTestReport                                           # coverage → build/reports/jacoco
 ```
 
-Tests are plain JUnit — no Spring context, no database, no mocking framework — so
-they stay fast. The covered pieces are the ones every request routes through: the
-async batching in `iterator/`, the request/response edge (`ApiRequestBody`,
-`ApiResponse`), locale flattening and platform detection.
+Two kinds of test, no database in either:
+
+- **Plain JUnit** for the pieces every request routes through — the async
+  batching in `iterator/`, the request/response edge (`ApiRequestBody`,
+  `ApiResponse`), locale flattening, platform detection, and the sync
+  reconcilers (`MeasurementSync`, `PulseSampleSync`).
+- **Sliced MockMvc tests** for the endpoints. `@AppControllerTest(Xyz.class)`
+  (in `src/test/.../web/`) boots one controller with a real signing key from
+  `TestAuthentication` and no servlet filters; repositories come in as
+  `@MockitoBean`. Endpoints return `CompletableFuture`, so requests go through
+  `AsyncEndpoint.on(mockMvc).call(...)`, which does the second dispatch. The two
+  filters have their own tests, since their status codes (`417` refresh, `403`
+  clear session) are contract.
+
+Coverage is reported to [Codecov](https://codecov.io/github/insulink-app/insulink-api)
+from the JaCoCo XML on every CI run; `codecov.yml` asks for no drop on a pull
+request rather than an absolute number.
 
 ## Contributions
 

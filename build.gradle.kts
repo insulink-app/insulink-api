@@ -4,6 +4,7 @@ import java.util.zip.GZIPInputStream
 
 plugins {
   id("java")
+  id("jacoco")
   id("org.springframework.boot") version "4.1.0"
   id("io.freefair.lombok") version "9.5.0"
 }
@@ -21,6 +22,9 @@ dependencies {
   testImplementation(platform("org.junit:junit-bom:6.1.2"))
   testImplementation("org.junit.jupiter:junit-jupiter:6.1.2")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.2")
+  testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.0")
+  // Boot 4 moved the @WebMvcTest slice out of the starter into its own module.
+  testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.0")
 
   implementation("com.google.guava:guava:33.6.0-jre")
 
@@ -58,6 +62,15 @@ dependencies {
 
 tasks.test {
   useJUnitPlatform()
+  finalizedBy(tasks.jacocoTestReport)
+}
+
+// Codecov reads the XML report; the HTML one is only useful locally.
+tasks.jacocoTestReport {
+  dependsOn(tasks.test)
+  reports {
+    xml.required = true
+  }
 }
 
 tasks.bootJar {

@@ -35,17 +35,24 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/reports/jacoco/test/jacocoTestReport.xml
+
       # The build step only prints failures into the log, where they scroll away.
-      # Keep the reports so a red run can still be read afterwards.
+      # Keep the reports so a red run can still be read afterwards — only on
+      # failure, since green runs have nothing to read and just burn artifact quota.
       - name: Upload test reports
-        if: ${{ !cancelled() }}
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
             build/reports/tests/
             build/test-results/
-          retention-days: 14
+          retention-days: 7
           if-no-files-found: ignore
 
   # Feeds the resolved dependency graph to GitHub, so Dependabot can alert on
@@ -67,5 +74,9 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
 
+      # Only submit — the action's default also uploads the graph JSON as a
+      # workflow artifact, which is dead weight and eats the storage quota.
       - name: Submit dependency graph
         uses: gradle/actions/dependency-submission@v6
+        with:
+          dependency-graph: generate-and-submit

@@ -61,7 +61,8 @@ public final class LivePulseController extends AppRestController {
     if (!body.has("b")) {
       return ApiResponse.error(1000).future();
     }
-    liveCache.record(findUserId(request), body.getInt("b"));
-    return ApiResponse.success().future();
+    var userId = findUserId(request);
+    liveCache.record(userId, body.getInt("b"));
+    return ApiResponse.success(Map.of("live", liveCache.isWatched(userId))).future();
   }
 }

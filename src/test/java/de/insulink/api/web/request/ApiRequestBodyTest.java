@@ -137,4 +137,52 @@ final class ApiRequestBodyTest {
     var body = bodyOf("{\"tags\": [\"sport\", \"morning\"]}");
     Assertions.assertEquals(java.util.List.of("sport", "morning"), body.getList("tags"));
   }
+
+  @Test
+  void floatsAreReadAtTheirOwnPrecision() {
+    var body = bodyOf("{\"glucose\": 118.5}");
+    Assertions.assertEquals(118.5f, body.getFloat("glucose"));
+    Assertions.assertEquals(0, status.get());
+  }
+
+  @Test
+  void aMissingFloatFallsBackWithoutLookingLikeAReading() {
+    var body = bodyOf("{}");
+    Assertions.assertEquals(-1f, body.getFloat("glucose"));
+    Assertions.assertEquals(HttpServletResponse.SC_BAD_REQUEST, status.get());
+  }
+
+  /**
+   * The untyped read hands out whatever the parser made of the value — a
+   * decimal arrives as a {@link java.math.BigDecimal}, not a double, so a
+   * caller comparing it against a boxed double will not match it.
+   */
+  @Test
+  void anUntypedValueIsHandedOutAsTheParserBuiltIt() {
+    var body = bodyOf("{\"serving\": 30.0, \"label\": \"Scheibe\"}");
+    Assertions.assertEquals(new java.math.BigDecimal("30.0"),
+      body.getAny("serving"));
+    Assertions.assertEquals("Scheibe", body.getAny("label"));
+    Assertions.assertEquals(0, status.get());
+  }
+
+  @Test
+  void aMissingUntypedValueIsNullAndMarksTheRequest() {
+    var body = bodyOf("{}");
+    Assertions.assertNull(body.getAny("serving"));
+    Assertions.assertEquals(HttpServletResponse.SC_BAD_REQUEST, status.get());
+  }
+
+  /**
+   * A caller may hand in its own policy when the default one is too strict —
+   * the text still comes back unescaped, not as entities.
+   */
+  @Test
+  void anExplicitPolicyDecidesWhatSurvivesTheSanitizer() {
+    var body = bodyOf("{\"note\": \"<b>Pasta</b> & Salat\"}");
+    Assertions.assertEquals("Pasta & Salat", body.getSanitizedString("note",
+      org.owasp.html.Sanitizers.BLOCKS));
+    Assertions.assertEquals("<b>Pasta</b> & Salat", body.getSanitizedString("note",
+      org.owasp.html.Sanitizers.FORMATTING));
+  }
 }
