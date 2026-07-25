@@ -155,6 +155,27 @@ final class SportLogbookControllerTest {
       saved.getValue().sets());
   }
 
+  /**
+   * The client id is a session's natural key (its start), so a list carrying it
+   * twice is one workout logged twice — which is what a workout finished on two
+   * devices produces. Storing both rows would show it twice in every logbook,
+   * and each replace-all round trip would carry the pair straight back.
+   */
+  @Test
+  void syncKeepsOneWorkoutPerClientId() throws Exception {
+    sync("/sport/workouts/sync/", """
+      {"workouts": [
+        {"id": "app-workout-1", "routine": "app-push", "started": 1700000000000,
+         "sets": [{"reps": 10}]},
+        {"id": "app-workout-1", "routine": "app-push", "started": 1700000000000,
+         "sets": [{"reps": 12}]}
+      ]}""").andExpect(jsonPath("$.success").value(true));
+    var saved = ArgumentCaptor.forClass(WorkoutSession.class);
+    Mockito.verify(sessionRepository).save(saved.capture());
+    Assertions.assertTrue(saved.getValue().sets().contains("12"),
+      saved.getValue().sets());
+  }
+
   @Test
   void syncDropsTheWorkoutsTheUserHadBefore() throws Exception {
     var stale = WorkoutSession.create(UUID.randomUUID(), USER_ID, "gone",

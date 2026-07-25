@@ -127,6 +127,31 @@ final class ActiveWorkoutControllerTest {
       saved.getValue().data());
   }
 
+  /**
+   * The zombie workout: a device mirrors the session it is following, another
+   * one finishes it, and the push that was already on its way writes the row
+   * back — every device then offers to resume a workout that is over, and
+   * finishing it logs the session a second time under the same id. The stamp the
+   * sender carries names a row that is gone, which is what gives it away.
+   */
+  @Test
+  void aPushCarryingOnAWorkoutThatWasEndedElsewhereIsRefused() throws Exception {
+    sync("{\"workout\": " + SNAPSHOT + ", \"updated\": 1700000000000}")
+      .andExpect(jsonPath("$.error.code").value(1001));
+    Mockito.verify(workoutRepository, Mockito.never()).save(Mockito.any());
+  }
+
+  /**
+   * A device STARTING a workout knows no stamp, so it must still be able to
+   * create the row — that is the normal first push of every session.
+   */
+  @Test
+  void aPushWithoutAStampStartsAWorkoutEvenWhenNoneRuns() throws Exception {
+    sync("{\"workout\": " + SNAPSHOT + ", \"updated\": 0}")
+      .andExpect(jsonPath("$.success").value(true));
+    Mockito.verify(workoutRepository).save(Mockito.any());
+  }
+
   @Test
   void aPushWithoutASnapshotIsRefusedInsteadOfStored() throws Exception {
     sync("{}").andExpect(jsonPath("$.error.code").value(1000));

@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -54,11 +56,24 @@ public final class WorkoutSessionController extends AppRestController {
     HttpServletResponse response
   ) {
     var userId = findUserId(request);
-    var fresh = ApiRequestBody.of(payload, response).getObjectList("workouts")
-      .stream().map(entry -> session(userId, entry)).toList();
+    var fresh = deduplicated(ApiRequestBody.of(payload, response)
+      .getObjectList("workouts").stream()
+      .map(entry -> session(userId, entry)).toList());
     return sessionRepository.findByUserIdOrderByStartedAt(userId)
       .thenCompose(existing ->
         SportCollection.create(sessionRepository).replace(existing, fresh));
+  }
+
+  /**
+   * Keeps one session per client id — the last of each. The clients append a
+   * finished workout to their own list, so a list carrying the same id twice is
+   * one session logged twice; storing both would show the workout twice in every
+   * logbook, and keep doing so on each replace-all round trip.
+   */
+  private List<WorkoutSession> deduplicated(List<WorkoutSession> sessions) {
+    var byClientId = new LinkedHashMap<String, WorkoutSession>();
+    sessions.forEach(session -> byClientId.put(session.clientId(), session));
+    return List.copyOf(byClientId.values());
   }
 
   private WorkoutSession session(UUID userId, ApiRequestBody entry) {

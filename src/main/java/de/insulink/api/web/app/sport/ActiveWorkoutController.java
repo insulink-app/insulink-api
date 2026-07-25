@@ -34,6 +34,12 @@ import java.util.concurrent.CompletableFuture;
  * {@code WorkoutSnapshot}, agreed between the clients, and nothing here reads
  * into it. A {@code sync} without one is rejected rather than stored, so a
  * malformed push cannot leave a workout the clients then fail to parse.
+ * <p>
+ * A {@code sync} carries the {@code updated} stamp of the row the sender last
+ * saw ({@code 0} when it is starting a fresh workout). That is what stops a push
+ * still in flight when another device ended the workout from writing the row
+ * back — a zombie workout every device then offers to resume, and which is
+ * logged a second time when someone finishes it.
  */
 @RestController
 public final class ActiveWorkoutController extends AppRestController {
@@ -68,11 +74,9 @@ public final class ActiveWorkoutController extends AppRestController {
       return ApiResponse.error(1000).future();
     }
     var snapshot = body.getObject("workout").raw().toString();
+    var known = body.has("updated") ? body.getLong("updated") : 0L;
     return workoutRepository.findByUserId(userId)
-      .thenApply(existing -> workout(userId, existing, snapshot))
-      .thenCompose(workoutRepository::save)
-      .thenApply(saved -> ApiResponse.success(
-        Map.<String, Object>of("updated", saved.updatedAt())));
+      .thenCompose(existing -> store(userId, existing, snapshot, known));
   }
 
   @AppEndpoint
@@ -85,6 +89,33 @@ public final class ActiveWorkoutController extends AppRestController {
         .map(workoutRepository::delete)
         .orElseGet(() -> CompletableFuture.<Void>completedFuture(null)))
       .thenApply(_ -> ApiResponse.success());
+  }
+
+  /**
+   * Stores the snapshot, unless the sender is carrying on a workout that is no
+   * longer there: {@code known} is the stamp of the row it last saw, so a
+   * non-zero one with nothing left to update means the workout was ended
+   * elsewhere while this push was on its way. Writing it would resurrect the
+   * finished workout on every device; the sender learns it is over from its next
+   * {@code find} instead.
+   */
+  private CompletableFuture<ApiResponse> store(
+    UUID userId, Optional<ActiveWorkout> existing, String snapshot, long known
+  ) {
+    if (known > 0 && existing.isEmpty()) {
+      return ApiResponse.error(1001).future();
+    }
+    return workoutRepository.save(workout(userId, existing, snapshot))
+      .thenApply(this::stamped);
+  }
+
+  /**
+   * Answers a stored snapshot with the stamp it now carries, which the sender
+   * sends back on its next push.
+   */
+  private ApiResponse stamped(ActiveWorkout saved) {
+    return ApiResponse.success(
+      Map.<String, Object>of("updated", saved.updatedAt()));
   }
 
   /**
