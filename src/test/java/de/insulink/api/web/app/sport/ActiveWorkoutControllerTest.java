@@ -152,6 +152,30 @@ final class ActiveWorkoutControllerTest {
     Mockito.verify(workoutRepository).save(Mockito.any());
   }
 
+  /**
+   * The snapshot is the clients' own JSON and travels through unread, so a field
+   * one of them adds reaches the other without anything here knowing about it.
+   * Worth pinning: the clients have twice grown the snapshot (the routine items,
+   * then the pause stamp), and a field silently dropped in transit looks exactly
+   * like a client-side sync bug.
+   */
+  @Test
+  void everySnapshotFieldSurvivesTheRoundTripUntouched() throws Exception {
+    sync("""
+      {"workout": {"routine":"Push","pausedAt":1700000005000,"restEnds":null,
+       "items":[{"id":"i1"}],"weight":42.5}}""");
+    var saved = ArgumentCaptor.forClass(ActiveWorkout.class);
+    Mockito.verify(workoutRepository).save(saved.capture());
+    Mockito.when(workoutRepository.findByUserId(USER_ID))
+      .thenReturn(CompletableFuture.completedFuture(
+        Optional.of(saved.getValue())));
+    endpoint.call(get("/sport/workout/active/find/")
+        .header("Authorization", TestAuthentication.bearer(USER_ID)))
+      .andExpect(jsonPath("$.workout.pausedAt").value(1700000005000L))
+      .andExpect(jsonPath("$.workout.items[0].id").value("i1"))
+      .andExpect(jsonPath("$.workout.weight").value(42.5));
+  }
+
   @Test
   void aPushWithoutASnapshotIsRefusedInsteadOfStored() throws Exception {
     sync("{}").andExpect(jsonPath("$.error.code").value(1000));
