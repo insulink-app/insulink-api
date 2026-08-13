@@ -19,9 +19,9 @@ repositories {
 }
 
 dependencies {
-  testImplementation(platform("org.junit:junit-bom:6.1.2"))
+  testImplementation(platform("org.junit:junit-bom:6.1.3"))
   testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.2")
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
   testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.0")
   // Boot 4 moved the @WebMvcTest slice out of the starter into its own module.
   testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.0")
