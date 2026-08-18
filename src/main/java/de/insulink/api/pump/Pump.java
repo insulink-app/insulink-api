@@ -24,7 +24,14 @@ public final class Pump {
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false, updatable = false)
   private PumpType type;
-  @Column(name = "data", nullable = false, updatable = false)
+  /**
+   * The opaque pairing blob the app writes and reads back. Deliberately
+   * updatable, unlike the other columns: a pod's stored state changes while it
+   * runs (its command and session counters advance), so the app rewrites this.
+   * A column marked {@code updatable = false} is excluded from generated UPDATE
+   * statements, which would make {@link #updateData(String)} a silent no-op.
+   */
+  @Column(name = "data", nullable = false, columnDefinition = "TEXT")
   private String data;
   @Column(name = "registered_at", nullable = false, updatable = false)
   private long registeredAt;

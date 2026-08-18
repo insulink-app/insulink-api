@@ -2,7 +2,6 @@ package de.insulink.api.web.app.pump;
 
 import de.insulink.api.pump.Pump;
 import de.insulink.api.pump.PumpRepository;
-import de.insulink.api.pump.PumpType;
 import de.insulink.api.user.UserRepository;
 import de.insulink.api.web.request.ApiRequestBody;
 import de.insulink.api.web.response.ApiResponse;
@@ -17,24 +16,21 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
-import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Records a pump the app has paired, so the account can hand it back after the
- * app's local storage is lost.
+ * Refreshes the stored blob of a pump that is already registered.
  *
- * <p>The {@code data} field is an opaque blob the app writes and only the app
- * understands. That is deliberate and not laziness: the pod protocol lives in the
- * app under AGPL-3.0, and porting any of it here would make this API an AGPL
- * network service obliged to publish its source. The server stores bytes.
+ * <p>A running pod's stored state changes as its counters advance, so the app
+ * rewrites the blob rather than registering a second pump for the same pod.
  */
 @RestController
-public final class PumpRegistrationController extends AppRestController {
+public final class PumpUpdateController extends AppRestController {
   private final PumpRepository pumpRepository;
 
-  private PumpRegistrationController(
+  private PumpUpdateController(
     @Qualifier("authenticationKey") Key authenticationKey,
     UserRepository userRepository, PumpRepository pumpRepository
   ) {
@@ -43,24 +39,38 @@ public final class PumpRegistrationController extends AppRestController {
   }
 
   @AppEndpoint
-  @RequestMapping(path = "/pump/register/", method = RequestMethod.POST)
-  public CompletableFuture<ApiResponse> registerPump(
+  @RequestMapping(path = "/pump/update/", method = RequestMethod.POST)
+  public CompletableFuture<ApiResponse> updatePump(
     HttpServletRequest request, @RequestBody String payload,
     HttpServletResponse response
   ) {
     var body = ApiRequestBody.of(payload, response);
     var userId = findUserId(request);
-    var type = PumpType.valueOf(body.getString("type"));
+    var pumpId = body.getUUID("pump_id");
     var data = body.getString("data");
-    var expiresAt = body.getLong("expires_at");
-    return pumpRepository.generateAvailableId(UUID::randomUUID)
-      .thenApply(id -> Pump.create(id, userId, type, data,
-        System.currentTimeMillis(), expiresAt))
-      .thenCompose(pumpRepository::save)
-      .thenApply(this::registeredResponse);
+    return pumpRepository.findById(pumpId)
+      .thenCompose(pump -> applyUpdate(pump, data, userId));
   }
 
-  private ApiResponse registeredResponse(Pump pump) {
-    return ApiResponse.success(Map.of("pump_id", pump.id()));
+  private CompletableFuture<ApiResponse> applyUpdate(
+    Optional<Pump> pump, String data, UUID userId
+  ) {
+    return pump.isEmpty() ?
+      ApiResponse.error(1000).future() :
+      updatePump(pump.get(), data, userId);
+  }
+
+  /**
+   * Writes the new blob, refusing a pump that belongs to somebody else so a
+   * guessed id cannot overwrite another account's pod.
+   */
+  private CompletableFuture<ApiResponse> updatePump(
+    Pump pump, String data, UUID userId
+  ) {
+    if (!pump.userId().equals(userId)) {
+      return ApiResponse.error(1001).future();
+    }
+    pump.updateData(data);
+    return pumpRepository.save(pump).thenApply(_ -> ApiResponse.success());
   }
 }
