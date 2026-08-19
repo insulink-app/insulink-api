@@ -24,7 +24,14 @@ public final class Sensor {
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false, updatable = false)
   private SensorType type;
-  @Column(name = "data", nullable = false, updatable = false, columnDefinition = "TEXT")
+  /**
+   * The opaque sensor blob the app writes and reads back on a restore.
+   * Deliberately updatable, unlike the other columns: a re-pair rotates the
+   * session key, and {@link #updateData(String)} has to be able to persist that.
+   * A column marked {@code updatable = false} is excluded from generated UPDATE
+   * statements, which made that method a silent no-op.
+   */
+  @Column(name = "data", nullable = false, columnDefinition = "TEXT")
   private String data;
   @Column(name = "registered_at", nullable = false, updatable = false)
   private long registeredAt;
