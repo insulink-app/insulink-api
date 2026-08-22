@@ -35,7 +35,8 @@ public final class SensorInformationController extends AppRestController {
     HttpServletRequest request
   ) {
     var userId = findUserId(request);
-    return sensorRepository.findFirstByUserIdOrderByRegisteredAtDesc(userId)
+    return sensorRepository
+      .findFirstByUserIdAndDiscardedAtIsNullOrderByRegisteredAtDesc(userId)
       .thenApply(sensor -> sensor.map(this::sensorInformation)
         .map(ApiResponse::success).orElseGet(() -> ApiResponse.error(1000)));
   }
@@ -57,6 +58,9 @@ public final class SensorInformationController extends AppRestController {
     information.put("data", sensor.data());
     information.put("registered_at", sensor.registeredAt());
     information.put("expires_at", sensor.expiresAt());
+    // Null for a sensor still being offered. Carried in the history so a reader
+    // can tell one that ran its course from one the user said was gone.
+    information.put("discarded_at", sensor.discardedAt());
     return information;
   }
 }

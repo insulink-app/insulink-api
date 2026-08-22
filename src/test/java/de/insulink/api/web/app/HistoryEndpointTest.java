@@ -66,7 +66,7 @@ final class HistoryEndpointTest {
   void stubHistory() {
     endpoint = AsyncEndpoint.on(mockMvc);
     sensor = Sensor.create(SENSOR_ID, USER_ID, SensorType.DEXCOM_G7, "old-data",
-      RECORDED_AT, RECORDED_AT + 864_000_000L);
+      RECORDED_AT, RECORDED_AT + 864_000_000L, null);
     Mockito.when(glucoseRepository.findByUserId(USER_ID))
       .thenReturn(CompletableFuture.completedFuture(List.of()));
     Mockito.when(eventRepository.findByUserId(USER_ID))
@@ -144,7 +144,7 @@ final class HistoryEndpointTest {
   @Test
   void aSensorBelongingToSomebodyElseCannotBeUpdated() throws Exception {
     var foreignSensor = Sensor.create(SENSOR_ID, UUID.randomUUID(),
-      SensorType.DEXCOM_G7, "not-yours", RECORDED_AT, RECORDED_AT);
+      SensorType.DEXCOM_G7, "not-yours", RECORDED_AT, RECORDED_AT, null);
     Mockito.when(sensorRepository.findById(SENSOR_ID))
       .thenReturn(CompletableFuture.completedFuture(Optional.of(foreignSensor)));
     updateSensor(SENSOR_ID, "new-data")

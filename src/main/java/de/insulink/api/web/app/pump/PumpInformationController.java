@@ -41,7 +41,8 @@ public final class PumpInformationController extends AppRestController {
     HttpServletRequest request
   ) {
     var userId = findUserId(request);
-    return pumpRepository.findFirstByUserIdOrderByRegisteredAtDesc(userId)
+    return pumpRepository
+      .findFirstByUserIdAndDiscardedAtIsNullOrderByRegisteredAtDesc(userId)
       .thenApply(this::currentPumpResponse);
   }
 
@@ -71,6 +72,9 @@ public final class PumpInformationController extends AppRestController {
     information.put("data", pump.data());
     information.put("registered_at", pump.registeredAt());
     information.put("expires_at", pump.expiresAt());
+    // Null for a pod still being offered. Carried in the history so a reader can
+    // tell a pod that ran its course from one the user said was gone.
+    information.put("discarded_at", pump.discardedAt());
     return information;
   }
 }

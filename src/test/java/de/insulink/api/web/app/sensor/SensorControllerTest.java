@@ -54,7 +54,8 @@ final class SensorControllerTest {
     endpoint = AsyncEndpoint.on(mockMvc);
     Mockito.when(sensorRepository.findByUserId(USER_ID))
       .thenReturn(CompletableFuture.completedFuture(List.of()));
-    Mockito.when(sensorRepository.findFirstByUserIdOrderByRegisteredAtDesc(USER_ID))
+    Mockito.when(sensorRepository
+      .findFirstByUserIdAndDiscardedAtIsNullOrderByRegisteredAtDesc(USER_ID))
       .thenReturn(CompletableFuture.completedFuture(Optional.empty()));
     Mockito.when(sensorRepository.save(Mockito.any()))
       .thenAnswer(invocation -> CompletableFuture
@@ -65,7 +66,7 @@ final class SensorControllerTest {
 
   private Sensor sensor(SensorType type, long registeredAt, long expiresAt) {
     return Sensor.create(UUID.randomUUID(), USER_ID, type, PAIRING_DATA,
-      registeredAt, expiresAt);
+      registeredAt, expiresAt, null);
   }
 
   @Test
@@ -111,7 +112,8 @@ final class SensorControllerTest {
 
   @Test
   void theCurrentSensorIsRenderedWithItsLifetime() throws Exception {
-    Mockito.when(sensorRepository.findFirstByUserIdOrderByRegisteredAtDesc(USER_ID))
+    Mockito.when(sensorRepository
+      .findFirstByUserIdAndDiscardedAtIsNullOrderByRegisteredAtDesc(USER_ID))
       .thenReturn(CompletableFuture.completedFuture(Optional.of(
         sensor(SensorType.DEXCOM_G7, 1_700_000_000_000L, 1_700_864_000_000L))));
     endpoint.call(get("/sensor/current/")

@@ -54,8 +54,9 @@ public final class PumpRegistrationController extends AppRestController {
     var data = body.getString("data");
     var expiresAt = body.getLong("expires_at");
     return pumpRepository.generateAvailableId(UUID::randomUUID)
+      // Never discarded: a pod is only just being registered.
       .thenApply(id -> Pump.create(id, userId, type, data,
-        System.currentTimeMillis(), expiresAt))
+        System.currentTimeMillis(), expiresAt, null))
       .thenCompose(pumpRepository::save)
       .thenApply(this::registeredResponse);
   }

@@ -15,5 +15,11 @@ public interface PumpRepository extends DatabaseRepository<Pump, UUID> {
   CompletableFuture<List<Pump>> findByUserId(UUID userId);
 
   @Async
-  CompletableFuture<Optional<Pump>> findFirstByUserIdOrderByRegisteredAtDesc(UUID userId);
+  /**
+   * The pod to offer back to the app: the newest one the user has NOT said is
+   * gone. A discarded pod stays in the table for the history and is skipped
+   * here, which is the whole difference between discarding and deleting.
+   */
+  CompletableFuture<Optional<Pump>>
+    findFirstByUserIdAndDiscardedAtIsNullOrderByRegisteredAtDesc(UUID userId);
 }

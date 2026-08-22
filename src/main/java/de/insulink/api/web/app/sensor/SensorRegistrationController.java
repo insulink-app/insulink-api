@@ -45,8 +45,9 @@ public final class SensorRegistrationController extends AppRestController {
     var data = body.getString("data");
     var expiresAt = body.getLong("expires_at");
     return sensorRepository.generateAvailableId(UUID::randomUUID)
+      // Never discarded: a sensor is only just being registered.
       .thenApply(id -> Sensor.create(id, userId, type, data,
-        System.currentTimeMillis(), expiresAt))
+        System.currentTimeMillis(), expiresAt, null))
       .thenCompose(sensorRepository::save)
       .thenApply(sensor -> ApiResponse.success(Map.of("sensor_id", sensor.id())));
   }

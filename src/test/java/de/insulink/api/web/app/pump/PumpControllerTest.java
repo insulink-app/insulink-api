@@ -56,7 +56,7 @@ final class PumpControllerTest {
 
   private Pump pumpOf(UUID ownerId, String data) {
     return Pump.create(PUMP_ID, ownerId, PumpType.OMNIPOD_DASH, data,
-      1_700_000_000_000L, 1_700_000_288_000L);
+      1_700_000_000_000L, 1_700_000_288_000L, null);
   }
 
   private String updateBody(String data) {
