@@ -5,7 +5,7 @@ import java.util.zip.GZIPInputStream
 plugins {
   id("java")
   id("jacoco")
-  id("org.springframework.boot") version "4.1.0"
+  id("org.springframework.boot") version "4.1.1"
   id("io.freefair.lombok") version "9.5.0"
 }
 
@@ -22,9 +22,9 @@ dependencies {
   testImplementation(platform("org.junit:junit-bom:6.1.3"))
   testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
-  testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.0")
+  testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.1")
   // Boot 4 moved the @WebMvcTest slice out of the starter into its own module.
-  testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.0")
+  testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.1")
 
   implementation("com.google.guava:guava:33.7.0-jre")
 
@@ -43,10 +43,10 @@ dependencies {
   implementation("org.hibernate.orm:hibernate-core:7.4.5.Final")
   implementation("org.reflections:reflections:0.10.2")
 
-  implementation("org.springframework.boot:spring-boot-starter-web:4.1.0")
+  implementation("org.springframework.boot:spring-boot-starter-web:4.1.1")
   implementation("org.springframework:spring-core:7.0.8")
   implementation("org.springframework.data:spring-data-jpa:4.1.0")
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.0")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.1")
   implementation("com.h2database:h2:2.4.240")
 
   implementation("de.mkammerer:argon2-jvm:2.12")
