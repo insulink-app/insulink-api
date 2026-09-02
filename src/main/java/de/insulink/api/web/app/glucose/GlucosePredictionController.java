@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -68,21 +69,28 @@ public final class GlucosePredictionController extends AppRestController {
     if (horizon == 0) {
       return ApiResponse.error(1500, "horizon must be 30 or 60").future();
     }
-    return predictionClient.backtest(findUserId(request), horizon, parseHours(body))
+    return predictionClient.backtest(findUserId(request), horizon,
+      parseSince(body), parseBound(body, "until"))
       .thenApply(this::backtestResponse)
       .exceptionally(_ -> ApiResponse.error(1501, "prediction unavailable"));
   }
 
   /**
-   * The window to look back over, in hours. A week is the ceiling the sidecar
-   * enforces too — beyond that the answer is thousands of anchors the phone would
-   * only average away.
+   * The window start as epoch ms, floored at 90 days back — the app's widest
+   * analysis range, and the ceiling on how much history one request may replay.
+   * Null when omitted, which leaves the sidecar its own default window.
    */
-  private int parseHours(ApiRequestBody body) {
-    if (!body.has("hours")) {
-      return 24;
+  private Long parseSince(ApiRequestBody body) {
+    var since = parseBound(body, "since");
+    if (since == null) {
+      return null;
     }
-    return Math.clamp(body.getInt("hours"), 1, 168);
+    return Math.max(since, System.currentTimeMillis() - Duration.ofDays(90).toMillis());
+  }
+
+  /** One window bound as epoch ms, null when the app did not send it. */
+  private Long parseBound(ApiRequestBody body, String key) {
+    return body.has(key) ? body.getLong(key) : null;
   }
 
   private ApiResponse backtestResponse(JSONObject result) {

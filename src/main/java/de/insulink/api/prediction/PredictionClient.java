@@ -32,16 +32,20 @@ public final class PredictionClient {
   }
 
   /**
-   * Asks for the forecasts the model WOULD have made over the past {@code hours},
+   * Asks for the forecasts the model WOULD have made between {@code since} and
+   * {@code until} (epoch ms, either null to leave the sidecar its own default),
    * one per grid bucket, so the app can score them against the readings it holds.
    * The sidecar answers with the point forecast, its band and the persistence
    * baseline for each anchor; nothing here judges any of it.
    */
-  public CompletableFuture<JSONObject> backtest(UUID userId, int horizon, int hours) {
+  public CompletableFuture<JSONObject> backtest(
+    UUID userId, int horizon, Long since, Long until
+  ) {
     return send("/backtest", new JSONObject()
       .put("user_id", userId.toString())
       .put("horizon_min", horizon)
-      .put("hours", hours));
+      .putOpt("since", since)
+      .putOpt("until", until));
   }
 
   private CompletableFuture<JSONObject> send(String path, JSONObject body) {

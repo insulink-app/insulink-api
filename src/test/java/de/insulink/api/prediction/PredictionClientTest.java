@@ -130,13 +130,25 @@ final class PredictionClientTest {
   }
 
   @Test
-  void theBacktestGoesToItsOwnEndpointWithTheWindowInHours() {
+  void theBacktestGoesToItsOwnEndpointWithTheWindowBounds() {
     reply = "{\"horizon_min\": 60, \"grid_minutes\": 5, \"points\": []}";
-    var result = client.backtest(UUID.randomUUID(), 60, 48).join();
+    var result = client.backtest(
+      UUID.randomUUID(), 60, 1_700_000_000_000L, 1_700_086_400_000L).join();
     var body = new JSONObject(receivedBody);
     Assertions.assertEquals("/backtest", receivedPath);
     Assertions.assertEquals(60, body.getInt("horizon_min"));
-    Assertions.assertEquals(48, body.getInt("hours"));
+    Assertions.assertEquals(1_700_000_000_000L, body.getLong("since"));
+    Assertions.assertEquals(1_700_086_400_000L, body.getLong("until"));
     Assertions.assertEquals(5, result.getInt("grid_minutes"));
+  }
+
+  /** An omitted bound must not reach the sidecar as a null it would reject. */
+  @Test
+  void anAbsentWindowBoundIsLeftOutOfTheBodyEntirely() {
+    reply = "{\"horizon_min\": 30, \"grid_minutes\": 5, \"points\": []}";
+    client.backtest(UUID.randomUUID(), 30, null, null).join();
+    var body = new JSONObject(receivedBody);
+    Assertions.assertFalse(body.has("since"));
+    Assertions.assertFalse(body.has("until"));
   }
 }

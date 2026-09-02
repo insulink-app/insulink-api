@@ -18,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -59,7 +60,7 @@ final class GlucosePredictionControllerTest {
 
   private ResultActions backtest(String payload) throws Exception {
     Mockito.when(predictionClient.backtest(Mockito.any(), Mockito.anyInt(),
-        Mockito.anyInt()))
+        Mockito.any(), Mockito.any()))
       .thenReturn(CompletableFuture.completedFuture(new JSONObject()
         .put("horizon_min", 30)
         .put("grid_minutes", 5)
@@ -73,11 +74,11 @@ final class GlucosePredictionControllerTest {
       .content(payload));
   }
 
-  private int forwardedHours() {
-    var hours = ArgumentCaptor.forClass(Integer.class);
+  private Long forwardedBound(int position) {
+    var bounds = ArgumentCaptor.forClass(Long.class);
     Mockito.verify(predictionClient).backtest(Mockito.any(), Mockito.anyInt(),
-      hours.capture());
-    return hours.getValue();
+      bounds.capture(), bounds.capture());
+    return bounds.getAllValues().get(position);
   }
 
   private ResultActions predict(String payload) throws Exception {
@@ -200,7 +201,7 @@ final class GlucosePredictionControllerTest {
   @Test
   void theBacktestPassesThePastForecastsThroughForTheAppToScore()
     throws Exception {
-    backtest("{\"horizon\": 30, \"hours\": 24}")
+    backtest("{\"horizon\": 30, \"since\": 1700000000000, \"until\": 1700086400000}")
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.success").value(true))
       .andExpect(jsonPath("$.grid_minutes").value(5))
@@ -208,17 +209,32 @@ final class GlucosePredictionControllerTest {
       .andExpect(jsonPath("$.points[0].anchor_mgdl").value(128.0));
   }
 
+  /**
+   * The app's analysis range selector drives the window, so both bounds ride
+   * along to the sidecar untouched.
+   */
   @Test
-  void anOmittedBacktestWindowFallsBackToADay() throws Exception {
-    backtest("{\"horizon\": 30}").andExpect(status().isOk());
-    Assertions.assertEquals(24, forwardedHours());
+  void theSelectedAnalysisWindowIsForwardedAsItStands() throws Exception {
+    var since = System.currentTimeMillis() - Duration.ofDays(7).toMillis();
+    backtest("{\"horizon\": 30, \"since\": " + since + "}")
+      .andExpect(status().isOk());
+    Assertions.assertEquals(since, forwardedBound(0));
   }
 
-  /** A month of anchors is thousands of points the phone would only average away. */
   @Test
-  void aBacktestWindowBeyondAWeekIsCutBackToOne() throws Exception {
-    backtest("{\"horizon\": 30, \"hours\": 720}").andExpect(status().isOk());
-    Assertions.assertEquals(168, forwardedHours());
+  void anOmittedWindowLetsTheSidecarPickItsOwnDefault() throws Exception {
+    backtest("{\"horizon\": 30}").andExpect(status().isOk());
+    Assertions.assertNull(forwardedBound(0));
+    Assertions.assertNull(forwardedBound(1));
+  }
+
+  /** A year of anchors is a replay of the whole history for one screen. */
+  @Test
+  void aWindowReachingBeyondNinetyDaysIsCutBackToThem() throws Exception {
+    var floor = System.currentTimeMillis() - Duration.ofDays(90).toMillis();
+    backtest("{\"horizon\": 30, \"since\": 1000000000000}")
+      .andExpect(status().isOk());
+    Assertions.assertTrue(forwardedBound(0) >= floor);
   }
 
   @Test
@@ -227,6 +243,6 @@ final class GlucosePredictionControllerTest {
     backtest("{\"horizon\": 45}")
       .andExpect(jsonPath("$.error.code").value(1500));
     Mockito.verify(predictionClient, Mockito.never())
-      .backtest(Mockito.any(), Mockito.anyInt(), Mockito.anyInt());
+      .backtest(Mockito.any(), Mockito.anyInt(), Mockito.any(), Mockito.any());
   }
 }
