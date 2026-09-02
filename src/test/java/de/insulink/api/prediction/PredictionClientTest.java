@@ -128,4 +128,15 @@ final class PredictionClientTest {
     var call = client.predict(UUID.randomUUID(), List.of(), 30);
     Assertions.assertThrows(CompletionException.class, call::join);
   }
+
+  @Test
+  void theBacktestGoesToItsOwnEndpointWithTheWindowInHours() {
+    reply = "{\"horizon_min\": 60, \"grid_minutes\": 5, \"points\": []}";
+    var result = client.backtest(UUID.randomUUID(), 60, 48).join();
+    var body = new JSONObject(receivedBody);
+    Assertions.assertEquals("/backtest", receivedPath);
+    Assertions.assertEquals(60, body.getInt("horizon_min"));
+    Assertions.assertEquals(48, body.getInt("hours"));
+    Assertions.assertEquals(5, result.getInt("grid_minutes"));
+  }
 }

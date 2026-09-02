@@ -52,6 +52,47 @@ public final class GlucosePredictionController extends AppRestController {
       .exceptionally(_ -> ApiResponse.error(1501, "prediction unavailable"));
   }
 
+  /**
+   * Hands back the forecasts the model would have made over a past window, for the
+   * app's own accuracy view. A read, like the forecast itself — and a POST for the
+   * same reason: the parameters travel in the body.
+   */
+  @AppEndpoint
+  @RequestMapping(path = "/glucose/predict/backtest/", method = RequestMethod.POST)
+  public CompletableFuture<ApiResponse> backtestGlucose(
+    HttpServletRequest request, @RequestBody String payload,
+    HttpServletResponse response
+  ) {
+    var body = ApiRequestBody.of(payload, response);
+    var horizon = parseHorizon(body);
+    if (horizon == 0) {
+      return ApiResponse.error(1500, "horizon must be 30 or 60").future();
+    }
+    return predictionClient.backtest(findUserId(request), horizon, parseHours(body))
+      .thenApply(this::backtestResponse)
+      .exceptionally(_ -> ApiResponse.error(1501, "prediction unavailable"));
+  }
+
+  /**
+   * The window to look back over, in hours. A week is the ceiling the sidecar
+   * enforces too — beyond that the answer is thousands of anchors the phone would
+   * only average away.
+   */
+  private int parseHours(ApiRequestBody body) {
+    if (!body.has("hours")) {
+      return 24;
+    }
+    return Math.clamp(body.getInt("hours"), 1, 168);
+  }
+
+  private ApiResponse backtestResponse(JSONObject result) {
+    return ApiResponse.success(Map.of(
+      "horizon_min", result.getInt("horizon_min"),
+      "grid_minutes", result.getInt("grid_minutes"),
+      "points", result.getJSONArray("points").toList()
+    ));
+  }
+
   /** 30/60 valid (30 also the default when omitted); anything else -> 0 = reject. */
   private int parseHorizon(ApiRequestBody body) {
     if (!body.has("horizon")) {

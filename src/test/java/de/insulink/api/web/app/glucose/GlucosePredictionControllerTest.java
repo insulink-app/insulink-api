@@ -57,6 +57,29 @@ final class GlucosePredictionControllerTest {
         .put("curve", List.of(120, 124, 128))));
   }
 
+  private ResultActions backtest(String payload) throws Exception {
+    Mockito.when(predictionClient.backtest(Mockito.any(), Mockito.anyInt(),
+        Mockito.anyInt()))
+      .thenReturn(CompletableFuture.completedFuture(new JSONObject()
+        .put("horizon_min", 30)
+        .put("grid_minutes", 5)
+        .put("points", List.of(new JSONObject()
+          .put("ts", 1_700_000_000_000L)
+          .put("mgdl", 132.0)
+          .put("anchor_mgdl", 128.0)))));
+    return endpoint.call(post("/glucose/predict/backtest/")
+      .header("Authorization", TestAuthentication.bearer(USER_ID))
+      .contentType(MediaType.APPLICATION_JSON)
+      .content(payload));
+  }
+
+  private int forwardedHours() {
+    var hours = ArgumentCaptor.forClass(Integer.class);
+    Mockito.verify(predictionClient).backtest(Mockito.any(), Mockito.anyInt(),
+      hours.capture());
+    return hours.getValue();
+  }
+
   private ResultActions predict(String payload) throws Exception {
     return endpoint.call(post("/glucose/predict/")
       .header("Authorization", TestAuthentication.bearer(USER_ID))
@@ -172,5 +195,38 @@ final class GlucosePredictionControllerTest {
         new JSONObject().put("horizon_min", 30)));
     predict("{\"horizon\": 30}")
       .andExpect(jsonPath("$.error.code").value(1501));
+  }
+
+  @Test
+  void theBacktestPassesThePastForecastsThroughForTheAppToScore()
+    throws Exception {
+    backtest("{\"horizon\": 30, \"hours\": 24}")
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.success").value(true))
+      .andExpect(jsonPath("$.grid_minutes").value(5))
+      .andExpect(jsonPath("$.points[0].ts").value(1_700_000_000_000L))
+      .andExpect(jsonPath("$.points[0].anchor_mgdl").value(128.0));
+  }
+
+  @Test
+  void anOmittedBacktestWindowFallsBackToADay() throws Exception {
+    backtest("{\"horizon\": 30}").andExpect(status().isOk());
+    Assertions.assertEquals(24, forwardedHours());
+  }
+
+  /** A month of anchors is thousands of points the phone would only average away. */
+  @Test
+  void aBacktestWindowBeyondAWeekIsCutBackToOne() throws Exception {
+    backtest("{\"horizon\": 30, \"hours\": 720}").andExpect(status().isOk());
+    Assertions.assertEquals(168, forwardedHours());
+  }
+
+  @Test
+  void aBacktestForAnUntrainedHorizonIsRefusedTheSameWayAForecastIs()
+    throws Exception {
+    backtest("{\"horizon\": 45}")
+      .andExpect(jsonPath("$.error.code").value(1500));
+    Mockito.verify(predictionClient, Mockito.never())
+      .backtest(Mockito.any(), Mockito.anyInt(), Mockito.anyInt());
   }
 }

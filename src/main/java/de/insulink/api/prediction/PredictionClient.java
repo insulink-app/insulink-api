@@ -28,11 +28,27 @@ public final class PredictionClient {
   public CompletableFuture<JSONObject> predict(
     UUID userId, List<GlucoseEntry> readings, int horizon
   ) {
-    var body = requestBody(userId, readings, horizon).toString();
+    return send("/predict", requestBody(userId, readings, horizon));
+  }
+
+  /**
+   * Asks for the forecasts the model WOULD have made over the past {@code hours},
+   * one per grid bucket, so the app can score them against the readings it holds.
+   * The sidecar answers with the point forecast, its band and the persistence
+   * baseline for each anchor; nothing here judges any of it.
+   */
+  public CompletableFuture<JSONObject> backtest(UUID userId, int horizon, int hours) {
+    return send("/backtest", new JSONObject()
+      .put("user_id", userId.toString())
+      .put("horizon_min", horizon)
+      .put("hours", hours));
+  }
+
+  private CompletableFuture<JSONObject> send(String path, JSONObject body) {
     var request = HttpRequest.newBuilder()
-      .uri(URI.create(configuration.serviceUrl() + "/predict"))
+      .uri(URI.create(configuration.serviceUrl() + path))
       .header("Content-Type", "application/json")
-      .POST(HttpRequest.BodyPublishers.ofString(body))
+      .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
       .build();
     return HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofString())
       .thenApply(response -> new JSONObject(response.body()));
