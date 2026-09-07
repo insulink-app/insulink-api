@@ -28,10 +28,10 @@ dependencies {
 
   implementation("com.google.guava:guava:33.7.1-jre")
 
-  implementation("org.projectlombok:lombok:1.18.46")
-  annotationProcessor("org.projectlombok:lombok:1.18.46")
-  testImplementation("org.projectlombok:lombok:1.18.46")
-  testAnnotationProcessor("org.projectlombok:lombok:1.18.46")
+  implementation("org.projectlombok:lombok:1.18.48")
+  annotationProcessor("org.projectlombok:lombok:1.18.48")
+  testImplementation("org.projectlombok:lombok:1.18.48")
+  testAnnotationProcessor("org.projectlombok:lombok:1.18.48")
 
   implementation("org.json:json:20260814")
   implementation("commons-io:commons-io:2.22.0")
