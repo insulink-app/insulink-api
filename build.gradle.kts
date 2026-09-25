@@ -57,7 +57,7 @@ dependencies {
 
   implementation("com.maxmind.geoip2:geoip2:5.2.0")
 
-  implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20260313.1")
+  implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20260921.1")
 }
 
 tasks.test {
