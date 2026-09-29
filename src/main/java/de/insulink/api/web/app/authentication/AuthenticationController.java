@@ -112,7 +112,7 @@ public class AuthenticationController extends AppRestController {
     }
     var session = UserSession.create(sessionId, userId,
       UserSessionStatus.ACTIVE, platform, ipAddress, country, city,
-      System.currentTimeMillis(), refreshToken, System.currentTimeMillis());
+      System.currentTimeMillis(), refreshToken, System.currentTimeMillis(), null);
     return sessionRepository.save(session);
   }
 }

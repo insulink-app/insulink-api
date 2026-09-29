@@ -68,18 +68,31 @@ public final class SessionController extends AuthenticationController {
   private ApiResponse refresh(
     String refreshToken, User user, UserSession session
   ) {
-    if (session.status().isClosed() ||
-      !session.lastRefreshToken().equals(refreshToken)
-    ) {
+    if (!session.acceptsRefreshToken(refreshToken)) {
       return ApiResponse.error(1002);
     }
-    var newAuthenticationToken = generateAuthenticationToken(user.id(), session.id());
+    var authenticationToken = generateAuthenticationToken(user.id(), session.id());
+    return ApiResponse.success(Map.of(
+      "authentication_token", authenticationToken,
+      "refresh_token", redeemRefreshToken(refreshToken, user, session)));
+  }
+
+  /**
+   * The refresh token to hand back. Only the current one rotates; the one it
+   * replaced gets the current one again, so a retried or doubled refresh (the
+   * app and its background service at once) ends on the same token instead of
+   * racing each other into a logout.
+   */
+  private String redeemRefreshToken(
+    String refreshToken, User user, UserSession session
+  ) {
+    if (!refreshToken.equals(session.lastRefreshToken())) {
+      return session.lastRefreshToken();
+    }
     var newRefreshToken = generateRefreshToken(user.id(), session.id());
     session.updateRefreshToken(newRefreshToken);
     sessionRepository().save(session);
-    return ApiResponse.success(Map.of(
-      "authentication_token", newAuthenticationToken,
-      "refresh_token", newRefreshToken));
+    return newRefreshToken;
   }
 
   @RequestMapping(path = "/logout/", method = RequestMethod.GET)

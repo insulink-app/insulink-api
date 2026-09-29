@@ -32,8 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * token that is signed with the refresh key, belongs to a user and session that
  * still exist, is the session's current token, and whose session is still open.
  * Each of those failing is its own error code, because the app reacts to them
- * differently. A successful refresh rotates the stored token, so replaying the
- * old one afterwards is refused.
+ * differently. A successful refresh rotates the stored token; the one it
+ * replaced is still redeemed for the current one until the next rotation.
  */
 @AppControllerTest(SessionController.class)
 final class SessionControllerTest {
@@ -58,7 +58,7 @@ final class SessionControllerTest {
     endpoint = AsyncEndpoint.on(mockMvc);
     currentRefreshToken = TestAuthentication.refreshToken(USER_ID, SESSION_ID);
     session = UserSession.create(SESSION_ID, USER_ID, UserSessionStatus.ACTIVE,
-      "android", "127.0.0.1", "Germany", "Aachen", 0L, currentRefreshToken, 0L);
+      "android", "127.0.0.1", "Germany", "Aachen", 0L, currentRefreshToken, 0L, null);
     var user = User.create(USER_ID, "Lukas", "hash", "de", true, 0L);
     Mockito.when(userRepository.existsById(USER_ID))
       .thenReturn(CompletableFuture.completedFuture(true));
@@ -100,9 +100,24 @@ final class SessionControllerTest {
     Mockito.verify(sessionRepository).save(session);
   }
 
+  /**
+   * A refresh whose response was lost has already rotated; the app can only
+   * retry with the token it still holds, and that must not log it out.
+   */
   @Test
-  void theTokenThatWasJustReplacedIsNoLongerAccepted() throws Exception {
+  void theTokenThatWasJustReplacedGetsTheCurrentOneAgain() throws Exception {
     refresh(currentRefreshToken);
+    var rotated = session.lastRefreshToken();
+    refresh(currentRefreshToken)
+      .andExpect(jsonPath("$.success").value(true))
+      .andExpect(jsonPath("$.refresh_token").value(rotated));
+    Assertions.assertEquals(rotated, session.lastRefreshToken());
+  }
+
+  @Test
+  void aTokenTwoRotationsOldIsNoLongerAccepted() throws Exception {
+    refresh(currentRefreshToken);
+    session.updateRefreshToken("third");
     refresh(currentRefreshToken).andExpect(jsonPath("$.error.code").value(1002));
   }
 

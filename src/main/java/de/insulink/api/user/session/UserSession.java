@@ -38,12 +38,27 @@ public final class UserSession {
   private String lastRefreshToken;
   @Column(name = "last_refreshed_at", nullable = false)
   private long lastRefreshedAt;
+  @Column(name = "previous_refresh_token")
+  private String previousRefreshToken;
 
   public void close() {
     this.status = UserSessionStatus.CLOSED;
   }
 
+  /**
+   * Whether the refresh token may still be redeemed: the current one, or the
+   * one it replaced. The replaced one stays good until the next rotation
+   * because a refresh whose response was lost on a bad connection has already
+   * rotated here, and the app, never having seen the new token, can only
+   * come back with the old one. Refusing it logged the user out.
+   */
+  public boolean acceptsRefreshToken(String refreshToken) {
+    return !status.isClosed() && (refreshToken.equals(lastRefreshToken) ||
+      refreshToken.equals(previousRefreshToken));
+  }
+
   public void updateRefreshToken(String refreshToken) {
+    this.previousRefreshToken = this.lastRefreshToken;
     this.lastRefreshToken = refreshToken;
     this.lastRefreshedAt = System.currentTimeMillis();
   }
