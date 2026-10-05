@@ -6,7 +6,7 @@ plugins {
   id("java")
   id("jacoco")
   id("org.springframework.boot") version "4.1.1"
-  id("io.freefair.lombok") version "9.7.0"
+  id("io.freefair.lombok") version "9.8.0"
 }
 
 group = "de.insulink.api"
