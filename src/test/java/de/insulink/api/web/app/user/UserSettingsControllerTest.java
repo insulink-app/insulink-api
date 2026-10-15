@@ -3,6 +3,8 @@ package de.insulink.api.web.app.user;
 import de.insulink.api.user.UserRepository;
 import de.insulink.api.user.settings.UserSettings;
 import de.insulink.api.user.settings.UserSettingsRepository;
+import de.insulink.api.user.settings.history.UserSettingsChange;
+import de.insulink.api.user.settings.history.UserSettingsChangeRepository;
 import de.insulink.api.web.AppControllerTest;
 import de.insulink.api.web.AsyncEndpoint;
 import de.insulink.api.web.TestAuthentication;
@@ -29,7 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * User settings are stored as one opaque JSON blob the app owns, so the api
  * only checks that what it is handed parses as JSON at all — anything else it
  * writes through untouched. A user who never saved settings reads back an empty
- * object rather than null, so the app can always parse the answer.
+ * object rather than null, so the app can always parse the answer. Every key
+ * that differs from the stored blob is recorded as a change.
  */
 @AppControllerTest(UserSettingsController.class)
 final class UserSettingsControllerTest {
@@ -41,6 +44,8 @@ final class UserSettingsControllerTest {
   private UserRepository userRepository;
   @MockitoBean
   private UserSettingsRepository settingsRepository;
+  @MockitoBean
+  private UserSettingsChangeRepository changeRepository;
 
   private AsyncEndpoint endpoint;
 
@@ -52,6 +57,15 @@ final class UserSettingsControllerTest {
     Mockito.when(settingsRepository.save(Mockito.any()))
       .thenAnswer(invocation -> CompletableFuture
         .completedFuture(invocation.getArgument(0)));
+    Mockito.when(changeRepository.save(Mockito.any()))
+      .thenAnswer(invocation -> CompletableFuture
+        .completedFuture(invocation.getArgument(0)));
+  }
+
+  private void stubStoredContent(String content) {
+    Mockito.when(settingsRepository.findById(USER_ID))
+      .thenReturn(CompletableFuture.completedFuture(Optional.of(UserSettings
+        .create(USER_ID, content, 1_700_000_000_000L))));
   }
 
   private void change(String payload, boolean expectedSuccess) throws Exception {
@@ -73,9 +87,7 @@ final class UserSettingsControllerTest {
 
   @Test
   void storedSettingsAreHandedBackAsTheyWereSaved() throws Exception {
-    Mockito.when(settingsRepository.findById(USER_ID))
-      .thenReturn(CompletableFuture.completedFuture(Optional.of(UserSettings
-        .create(USER_ID, "{\"unit\":\"mgdl\"}", 1_700_000_000_000L))));
+    stubStoredContent("{\"unit\":\"mgdl\"}");
     endpoint.call(get("/user/settings/find/")
         .header("Authorization", TestAuthentication.bearer(USER_ID)))
       .andExpect(jsonPath("$.settings").value("{\"unit\":\"mgdl\"}"));
@@ -104,5 +116,23 @@ final class UserSettingsControllerTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"settings\": \"[]\"}"))
       .andExpect(jsonPath("$.error.code").value(1000));
+  }
+
+  @Test
+  void aChangedKeyIsRecordedWithItsOldAndNewValue() throws Exception {
+    stubStoredContent("{\"bolus_carb_factor\":\"15\",\"unit\":\"mgdl\"}");
+    change("{\"settings\": \"{\\\"bolus_carb_factor\\\":\\\"12\\\",\\\"unit\\\":\\\"mgdl\\\"}\"}", true);
+    var recorded = ArgumentCaptor.forClass(UserSettingsChange.class);
+    Mockito.verify(changeRepository).save(recorded.capture());
+    Assertions.assertEquals("bolus_carb_factor", recorded.getValue().settingKey());
+    Assertions.assertEquals("15", recorded.getValue().oldValue());
+    Assertions.assertEquals("12", recorded.getValue().newValue());
+  }
+
+  @Test
+  void aStoredBlobThatIsNotJsonCountsAsEmpty() throws Exception {
+    stubStoredContent("garbage");
+    change("{\"settings\": \"{\\\"unit\\\":\\\"mmol\\\"}\"}", true);
+    Mockito.verify(changeRepository).save(Mockito.any());
   }
 }
