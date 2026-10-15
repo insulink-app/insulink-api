@@ -1,8 +1,11 @@
 package de.insulink.api.web.app.user;
 
+import de.insulink.api.iterator.AsyncIterator;
 import de.insulink.api.user.UserRepository;
 import de.insulink.api.user.settings.UserSettings;
 import de.insulink.api.user.settings.UserSettingsRepository;
+import de.insulink.api.user.settings.history.UserSettingsChangeRepository;
+import de.insulink.api.user.settings.history.UserSettingsDiff;
 import de.insulink.api.web.request.ApiRequestBody;
 import de.insulink.api.web.response.ApiResponse;
 import de.insulink.api.web.security.app.AppEndpoint;
@@ -19,18 +22,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
 public final class UserSettingsController extends AppRestController {
   private final UserSettingsRepository settingsRepository;
+  private final UserSettingsChangeRepository changeRepository;
 
   private UserSettingsController(
     @Qualifier("authenticationKey") Key authenticationKey,
-    UserRepository userRepository, UserSettingsRepository settingsRepository
+    UserRepository userRepository, UserSettingsRepository settingsRepository,
+    UserSettingsChangeRepository changeRepository
   ) {
     super(authenticationKey, userRepository);
     this.settingsRepository = settingsRepository;
+    this.changeRepository = changeRepository;
   }
 
   @AppEndpoint
@@ -55,7 +62,24 @@ public final class UserSettingsController extends AppRestController {
     }
     var settings = UserSettings.create(findUserId(request), content,
       System.currentTimeMillis());
-    return settingsRepository.save(settings).thenApply(_ -> ApiResponse.success());
+    return settingsRepository.findById(settings.userId())
+      .thenCompose(stored -> storeSettings(stored, settings))
+      .thenApply(_ -> ApiResponse.success());
+  }
+
+  /**
+   * Saves the new blob and records every key whose value differs from the
+   * stored one, so it can later be traced when a setting changed. A stored blob
+   * that is missing or not JSON (signup does not validate it) counts as empty.
+   */
+  private CompletableFuture<?> storeSettings(
+    Optional<UserSettings> stored, UserSettings settings
+  ) {
+    var changes = UserSettingsDiff.create(settings.userId(), settings.lastUpdatedAt())
+      .changes(stored.map(UserSettings::content).filter(this::isValidJson)
+        .orElse("{}"), settings.content());
+    return settingsRepository.save(settings)
+      .thenCompose(_ -> AsyncIterator.execute(changes, changeRepository::save));
   }
 
   private boolean isValidJson(String content) {
