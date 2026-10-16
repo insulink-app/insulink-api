@@ -48,7 +48,11 @@ public final class MealPhoto {
   private double protein;
   @Column(name = "kcal", nullable = false, updatable = false)
   private double kcal;
-  @Column(name = "items", nullable = false, updatable = false, columnDefinition = "TEXT")
+  /**
+   * Nullable on purpose: Hibernate's schema update cannot add a NOT NULL column
+   * to a table that already holds rows, and then every insert fails.
+   */
+  @Column(name = "items", updatable = false, columnDefinition = "TEXT")
   private String items;
 
   /** The estimate this photo was stored with. */

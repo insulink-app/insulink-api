@@ -52,4 +52,11 @@ final class MealEstimateReplyTest {
     var cut = INIT + "\n" + RESULT.substring(0, 40);
     Assertions.assertTrue(MealEstimateReply.create(cut).estimate().isEmpty());
   }
+
+  @Test
+  void theLastLineSaysWhyThereIsNoEstimate() {
+    var refused = INIT + "\n{\"type\":\"result\",\"result\":\"Not logged in\"}\n";
+    Assertions.assertTrue(MealEstimateReply.create(refused).lastLine()
+      .contains("Not logged in"));
+  }
 }

@@ -30,6 +30,16 @@ public final class MealEstimateReply {
       .findFirst();
   }
 
+  /**
+   * The CLI's last words, for the log when there is no estimate: the result
+   * line says why ("Not logged in", a usage limit). Cut to 500 characters.
+   */
+  public String lastLine() {
+    var lines = stdout.strip().split("\n");
+    var last = lines[lines.length - 1];
+    return last.substring(0, Math.min(500, last.length()));
+  }
+
   private Optional<JSONObject> parseLine(String line) {
     try {
       return Optional.of(new JSONObject(line));

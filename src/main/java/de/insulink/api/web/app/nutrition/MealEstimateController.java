@@ -12,6 +12,8 @@ import de.insulink.api.web.security.app.AppEndpoint;
 import de.insulink.api.web.security.app.AppRestController;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +32,9 @@ import java.util.concurrent.CompletableFuture;
  */
 @RestController
 public final class MealEstimateController extends AppRestController {
+  private static final Logger LOGGER =
+    LoggerFactory.getLogger(MealEstimateController.class);
+
   private final MealPhotoEstimator estimator;
   private final MealPhotoRepository mealPhotoRepository;
 
@@ -59,7 +64,17 @@ public final class MealEstimateController extends AppRestController {
     return estimator.estimate(image, body.getString("language", 2))
       .thenCompose(estimate -> keep(userId, image, estimate))
       .thenApply(this::estimateResponse)
-      .exceptionally(_ -> ApiResponse.error(1601, "estimate unavailable"));
+      .exceptionally(this::estimateFailed);
+  }
+
+  /**
+   * Logs why there is no estimate (the CLI's answer, or the database refusing
+   * the photo) and answers 1601. The app can only say that it failed, so the
+   * reason has to be in the server log.
+   */
+  private ApiResponse estimateFailed(Throwable failure) {
+    LOGGER.error("Meal photo estimate failed", failure);
+    return ApiResponse.error(1601, "estimate unavailable");
   }
 
   /** Stores the photo with its estimate. */

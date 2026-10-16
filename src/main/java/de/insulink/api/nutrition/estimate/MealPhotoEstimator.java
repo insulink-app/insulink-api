@@ -36,10 +36,12 @@ public final class MealPhotoEstimator {
       .thenApply(this::parse);
   }
 
+  /** The estimate, or a failure that carries what the CLI said instead. */
   private MealEstimate parse(String stdout) {
-    return MealEstimateReply.create(stdout).estimate()
+    var reply = MealEstimateReply.create(stdout);
+    return reply.estimate()
       .orElseThrow(() -> new CompletionException(
-        new IllegalStateException("no estimate")));
+        new IllegalStateException("no estimate, CLI said: " + reply.lastLine())));
   }
 
   /**
