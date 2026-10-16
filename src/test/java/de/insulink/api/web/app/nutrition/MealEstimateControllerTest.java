@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AppControllerTest(MealEstimateController.class)
 final class MealEstimateControllerTest {
   private static final UUID USER_ID = UUID.randomUUID();
+  private static final UUID PHOTO_ID = UUID.randomUUID();
   private static final byte[] JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x01};
 
   @Autowired
@@ -50,7 +51,7 @@ final class MealEstimateControllerTest {
   @BeforeEach
   void stubStorage() {
     Mockito.when(mealPhotoRepository.generateAvailableId(Mockito.any()))
-      .thenReturn(CompletableFuture.completedFuture(UUID.randomUUID()));
+      .thenReturn(CompletableFuture.completedFuture(PHOTO_ID));
     Mockito.when(mealPhotoRepository.save(Mockito.any()))
       .thenAnswer(call -> CompletableFuture.completedFuture(call.getArgument(0)));
   }
@@ -75,7 +76,8 @@ final class MealEstimateControllerTest {
     send(JPEG)
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.name").value("Spaghetti"))
-      .andExpect(jsonPath("$.carbs").value(72.0));
+      .andExpect(jsonPath("$.carbs").value(72.0))
+      .andExpect(jsonPath("$.photo_id").value(PHOTO_ID.toString()));
     var saved = ArgumentCaptor.forClass(MealPhoto.class);
     Mockito.verify(mealPhotoRepository).save(saved.capture());
     Assertions.assertEquals(USER_ID, saved.getValue().userId());

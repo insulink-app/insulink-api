@@ -47,6 +47,11 @@ public final class MealPhoto {
   @Column(name = "kcal", nullable = false, updatable = false)
   private double kcal;
 
+  /** The estimate this photo was stored with. */
+  public MealEstimate estimate() {
+    return MealEstimate.create(name, grams, carbs, fat, protein, kcal);
+  }
+
   /** The record for one photo and the estimate it produced. */
   public static MealPhoto of(UUID id, UUID userId, MealImage image,
     MealEstimate estimate) {

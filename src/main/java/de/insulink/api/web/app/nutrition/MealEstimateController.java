@@ -19,13 +19,14 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Estimates a meal from a photo. The app shows the answer in the product editor
- * for the user to check; nothing here doses or stores a meal. The photo is kept
- * with its raw estimate for documentation.
+ * Estimates a meal from a photo. The app puts the carbs into the bolus
+ * calculator's editable field; nothing here doses or stores a meal. The photo is
+ * kept with its raw estimate for documentation.
  */
 @RestController
 public final class MealEstimateController extends AppRestController {
@@ -57,17 +58,25 @@ public final class MealEstimateController extends AppRestController {
     var userId = findUserId(request);
     return estimator.estimate(image, body.getString("language", 2))
       .thenCompose(estimate -> keep(userId, image, estimate))
-      .thenApply(estimate -> ApiResponse.success(estimate.information()))
+      .thenApply(this::estimateResponse)
       .exceptionally(_ -> ApiResponse.error(1601, "estimate unavailable"));
   }
 
-  /** Stores the photo with its estimate, then hands the estimate on. */
-  private CompletableFuture<MealEstimate> keep(
+  /** Stores the photo with its estimate. */
+  private CompletableFuture<MealPhoto> keep(
     UUID userId, MealImage image, MealEstimate estimate
   ) {
     return mealPhotoRepository.generateAvailableId(UUID::randomUUID)
       .thenCompose(id -> mealPhotoRepository.save(
-        MealPhoto.of(id, userId, image, estimate)))
-      .thenApply(_ -> estimate);
+        MealPhoto.of(id, userId, image, estimate)));
+  }
+
+  /**
+   * The estimate plus the stored photo's {@code photo_id}, which the app keeps on
+   * the meal entry so the photo can be opened again from the meal log.
+   */
+  private ApiResponse estimateResponse(MealPhoto photo) {
+    return ApiResponse.success(photo.estimate().information())
+      .expand(Map.of("photo_id", photo.id().toString()));
   }
 }

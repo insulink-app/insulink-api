@@ -2,7 +2,7 @@
 
 `POST /v1/nutrition/estimate/` takes a meal photo and answers with Claude's
 estimate of the pictured portion: `name`, `grams`, `carbs`, `fat`, `protein`,
-`kcal` (totals, not per 100 g).
+`kcal` (totals, not per 100 g), plus the `photo_id` of the stored photo.
 
 ```json
 { "image": "<base64 JPEG>", "language": "de" }
@@ -11,8 +11,9 @@ estimate of the pictured portion: `name`, `grams`, `carbs`, `fat`, `protein`,
 Errors: `1600` the image is not a JPEG of at most 2 MB, `1601` no estimate came
 back (CLI missing, token expired, usage limit, timeout after 45 s).
 
-The estimate is a starting point. The app opens it in the product editor, and the
-user checks it there before any dose is computed from it.
+The estimate is a starting point. The app puts the carbohydrates into the bolus
+calculator's editable carbs field, where the user checks them before the dose is
+confirmed. The meal is logged with the estimate as an entry carrying `photo_id`.
 
 ## How it runs
 
@@ -38,6 +39,12 @@ A run takes about 3 to 10 seconds.
 Every successful estimate is kept in `nutrition_meal_photos`: the JPEG exactly as
 the app sent it (the app already scales it to 1024 px and compresses it, about
 100 to 200 kB) and the raw estimate, before the user corrected anything.
+
+## Opening a photo again
+
+`POST /v1/nutrition/photos/find/` with `{ "id": "<photo_id>" }` returns
+`{ "image": "<base64 JPEG>" }`. Only the user who took the photo gets it; an id of
+someone else's photo answers `1602` exactly like one that does not exist.
 
 ## Sign-in token
 
