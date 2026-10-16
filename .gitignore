@@ -36,3 +36,5 @@ geo
 
 # Claude
 .claude/
+# Compose secrets (CLAUDE_CODE_OAUTH_TOKEN)
+.env

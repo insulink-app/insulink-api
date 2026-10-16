@@ -1,0 +1,58 @@
+# Meal photo estimate
+
+`POST /v1/nutrition/estimate/` takes a meal photo and answers with Claude's
+estimate of the pictured portion: `name`, `grams`, `carbs`, `fat`, `protein`,
+`kcal` (totals, not per 100 g).
+
+```json
+{ "image": "<base64 JPEG>", "language": "de" }
+```
+
+Errors: `1600` the image is not a JPEG of at most 2 MB, `1601` no estimate came
+back (CLI missing, token expired, usage limit, timeout after 45 s).
+
+The estimate is a starting point. The app opens it in the product editor, and the
+user checks it there before any dose is computed from it.
+
+## How it runs
+
+The api container ships the Claude Code CLI. `MealPhotoEstimator` starts it per
+photo, one run at a time:
+
+```
+claude -p --input-format stream-json --output-format stream-json --verbose \
+  --tools "" --strict-mcp-config --setting-sources "" --no-session-persistence \
+  --model sonnet --json-schema <schema> --system-prompt <prompt>
+```
+
+- The photo goes in as a base64 image block over **stdin**, never as a file.
+- **No tools at all.** A photo can carry text; a prompt injected that way has
+  nothing to call, so it cannot read `config.ini` or reach the network.
+- `--json-schema` makes the CLI validate the answer; `MealEstimateReply` reads
+  `structured_output` from the final `result` line.
+
+A run takes about 3 to 10 seconds.
+
+## Storage
+
+Every successful estimate is kept in `nutrition_meal_photos`: the JPEG exactly as
+the app sent it (the app already scales it to 1024 px and compresses it, about
+100 to 200 kB) and the raw estimate, before the user corrected anything.
+
+## Sign-in token
+
+The CLI uses a Claude subscription through a long-lived OAuth token:
+
+1. On any machine with a browser: `claude setup-token`, sign in, copy the token.
+2. On the server, next to `docker-compose.yml`, put it in `.env` (not committed):
+   ```
+   CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
+   ```
+3. `docker compose up -d --build api`.
+
+The token lasts about a year. When estimates start failing with `1601`, run step
+1 again and replace the line in `.env`, then `docker compose up -d api`.
+
+A subscription is meant for personal use. A deployment that serves other people
+should use an API key (`ANTHROPIC_API_KEY`) instead; the CLI picks that up the
+same way.
