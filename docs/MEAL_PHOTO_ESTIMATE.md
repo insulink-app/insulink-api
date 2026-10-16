@@ -2,7 +2,8 @@
 
 `POST /v1/nutrition/estimate/` takes a meal photo and answers with Claude's
 estimate of the pictured portion: `name`, `grams`, `carbs`, `fat`, `protein`,
-`kcal` (totals, not per 100 g), plus the `photo_id` of the stored photo.
+`kcal` (totals, not per 100 g), `items` (the same six fields for every food on
+the plate; the totals are their sums), and the `photo_id` of the stored photo.
 
 ```json
 { "image": "<base64 JPEG>", "language": "de" }
@@ -32,13 +33,20 @@ claude -p --input-format stream-json --output-format stream-json --verbose \
 - `--json-schema` makes the CLI validate the answer; `MealEstimateReply` reads
   `structured_output` from the final `result` line.
 
+The prompt asks for one item per food, counts only the edible part (a banana
+without its peel), names typical German portions as anchors (a slice of bread
+45 g, a medium banana 120 g) and says to take the typical portion when unsure.
+Listing the foods one by one is what keeps an oversized portion from hiding in
+a single total, and lets the user see which food an odd number came from.
+
 A run takes about 3 to 10 seconds.
 
 ## Storage
 
 Every successful estimate is kept in `nutrition_meal_photos`: the JPEG exactly as
 the app sent it (the app's camera takes it as a 720p JPEG, a few hundred
-kB) and the raw estimate, before the user corrected anything.
+kB) and the raw estimate, before the user corrected anything: the totals as
+columns and the per-food `items` as a JSON array.
 
 ## Opening a photo again
 

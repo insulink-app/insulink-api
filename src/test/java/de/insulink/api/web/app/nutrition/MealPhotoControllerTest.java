@@ -1,6 +1,7 @@
 package de.insulink.api.web.app.nutrition;
 
 import de.insulink.api.nutrition.estimate.MealEstimate;
+import de.insulink.api.nutrition.estimate.MealEstimateItem;
 import de.insulink.api.nutrition.estimate.MealImage;
 import de.insulink.api.nutrition.estimate.MealPhoto;
 import de.insulink.api.nutrition.estimate.MealPhotoRepository;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -44,7 +46,8 @@ final class MealPhotoControllerTest {
 
   private void storedFor(UUID owner) {
     var photo = MealPhoto.of(PHOTO_ID, owner, MealImage.create(JPEG),
-      MealEstimate.create("Spaghetti", 350, 72, 14, 18, 490));
+      MealEstimate.create("Spaghetti", List.of(
+        MealEstimateItem.create("Spaghetti", 350, 72, 14, 18, 490))));
     Mockito.when(mealPhotoRepository.findById(PHOTO_ID))
       .thenReturn(CompletableFuture.completedFuture(Optional.of(photo)));
   }

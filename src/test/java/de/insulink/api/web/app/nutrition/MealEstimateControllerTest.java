@@ -1,6 +1,7 @@
 package de.insulink.api.web.app.nutrition;
 
 import de.insulink.api.nutrition.estimate.MealEstimate;
+import de.insulink.api.nutrition.estimate.MealEstimateItem;
 import de.insulink.api.nutrition.estimate.MealPhoto;
 import de.insulink.api.nutrition.estimate.MealPhotoEstimator;
 import de.insulink.api.nutrition.estimate.MealPhotoRepository;
@@ -21,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -72,12 +74,14 @@ final class MealEstimateControllerTest {
   @Test
   void theEstimateIsReturnedAndThePhotoKeptForTheUser() throws Exception {
     estimatorAnswers(CompletableFuture.completedFuture(
-      MealEstimate.create("Spaghetti", 350, 72, 14, 18, 490)));
+      MealEstimate.create("Spaghetti", List.of(
+        MealEstimateItem.create("Spaghetti", 350, 72, 14, 18, 490)))));
     send(JPEG)
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.name").value("Spaghetti"))
       .andExpect(jsonPath("$.carbs").value(72.0))
-      .andExpect(jsonPath("$.photo_id").value(PHOTO_ID.toString()));
+      .andExpect(jsonPath("$.photo_id").value(PHOTO_ID.toString()))
+      .andExpect(jsonPath("$.items[0].name").value("Spaghetti"));
     var saved = ArgumentCaptor.forClass(MealPhoto.class);
     Mockito.verify(mealPhotoRepository).save(saved.capture());
     Assertions.assertEquals(USER_ID, saved.getValue().userId());

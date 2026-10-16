@@ -12,17 +12,27 @@ import org.junit.jupiter.api.Test;
 final class MealEstimateReplyTest {
   private static final String INIT = "{\"type\":\"system\",\"subtype\":\"init\"}";
   private static final String RESULT = "{\"type\":\"result\",\"is_error\":false,"
-    + "\"structured_output\":{\"name\":\"Spaghetti\",\"grams\":350,\"carbs\":72,"
-    + "\"fat\":14,\"protein\":18,\"kcal\":490}}";
+    + "\"structured_output\":{\"name\":\"Brot mit Banane\",\"items\":["
+    + "{\"name\":\"Mischbrot\",\"grams\":45,\"carbs\":19,\"fat\":0.5,"
+    + "\"protein\":3,\"kcal\":95},"
+    + "{\"name\":\"Banane\",\"grams\":120,\"carbs\":25,\"fat\":0.2,"
+    + "\"protein\":1.3,\"kcal\":107}]}}";
 
   @Test
   void theResultLineBecomesTheEstimate() {
     var estimate = MealEstimateReply.create(INIT + "\n" + RESULT + "\n")
       .estimate().orElseThrow();
-    Assertions.assertEquals("Spaghetti", estimate.name());
-    Assertions.assertEquals(350, estimate.grams());
-    Assertions.assertEquals(72, estimate.carbs());
-    Assertions.assertEquals(490, estimate.kcal());
+    Assertions.assertEquals("Brot mit Banane", estimate.name());
+    Assertions.assertEquals(2, estimate.items().size());
+    Assertions.assertEquals("Banane", estimate.items().get(1).name());
+  }
+
+  @Test
+  void theTotalsAreTheSumsOfTheItems() {
+    var estimate = MealEstimateReply.create(RESULT).estimate().orElseThrow();
+    Assertions.assertEquals(165, estimate.grams());
+    Assertions.assertEquals(44, estimate.carbs());
+    Assertions.assertEquals(202, estimate.kcal());
   }
 
   @Test

@@ -9,13 +9,15 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.json.JSONArray;
 
 import java.util.UUID;
 
 /**
  * A meal photo kept for documentation, with the estimate Claude gave for it.
  * {@code image} is the compressed JPEG exactly as the app sent it; the values are
- * the raw estimate, before the user corrected anything in the editor.
+ * the raw estimate, before the user corrected anything: the totals as columns
+ * for querying, and {@code items}, the per-food breakdown as a JSON array.
  * {@code takenAt} is epoch milliseconds.
  */
 @Entity
@@ -46,10 +48,12 @@ public final class MealPhoto {
   private double protein;
   @Column(name = "kcal", nullable = false, updatable = false)
   private double kcal;
+  @Column(name = "items", nullable = false, updatable = false, columnDefinition = "TEXT")
+  private String items;
 
   /** The estimate this photo was stored with. */
   public MealEstimate estimate() {
-    return MealEstimate.create(name, grams, carbs, fat, protein, kcal);
+    return MealEstimate.create(name, MealEstimate.parseItems(new JSONArray(items)));
   }
 
   /** The record for one photo and the estimate it produced. */
@@ -57,6 +61,6 @@ public final class MealPhoto {
     MealEstimate estimate) {
     return create(id, userId, System.currentTimeMillis(), image.bytes(),
       estimate.name(), estimate.grams(), estimate.carbs(), estimate.fat(),
-      estimate.protein(), estimate.kcal());
+      estimate.protein(), estimate.kcal(), estimate.itemsJson());
   }
 }
