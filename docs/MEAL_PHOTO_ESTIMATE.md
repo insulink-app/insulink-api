@@ -37,8 +37,8 @@ A run takes about 3 to 10 seconds.
 ## Storage
 
 Every successful estimate is kept in `nutrition_meal_photos`: the JPEG exactly as
-the app sent it (the app already scales it to 1024 px and compresses it, about
-100 to 200 kB) and the raw estimate, before the user corrected anything.
+the app sent it (the app's camera takes it as a 720p JPEG, a few hundred
+kB) and the raw estimate, before the user corrected anything.
 
 ## Opening a photo again
 
