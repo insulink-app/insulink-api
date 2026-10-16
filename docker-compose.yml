@@ -20,6 +20,9 @@ services:
     build: .
     container_name: insulink-api
     restart: always
+    # From .env next to this file (not committed); see docs/MEAL_PHOTO_ESTIMATE.md.
+    environment:
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
     ports:
       - "8080:8080"
     depends_on:
