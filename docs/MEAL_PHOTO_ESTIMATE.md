@@ -39,6 +39,15 @@ without its peel), names typical German portions as anchors (a slice of bread
 Listing the foods one by one is what keeps an oversized portion from hiding in
 a single total, and lets the user see which food an odd number came from.
 
+Before the items the model writes `visible_text`: every brand, size and
+nutrition value it can read on packaging. Values then come from the packaging
+first, a recognised branded product second and generic tables only last. That
+order exists because of a Fassbrause: recognised correctly, but priced like a
+regular lemonade from a generic table, about 10 g carbohydrates too high. Drinks
+are estimated by volume (the printed bottle or can size, 1 ml as 1 g). The
+schema is a text block because `JSONObject` keeps no key order, and
+`visible_text` only helps when it is written before the numbers.
+
 A run takes about 3 to 10 seconds.
 
 ## Storage
