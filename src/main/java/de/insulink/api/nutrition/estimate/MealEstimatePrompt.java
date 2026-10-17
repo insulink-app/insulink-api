@@ -21,7 +21,9 @@ public final class MealEstimatePrompt {
   private static final String SYSTEM_PROMPT = String.join(" ",
     "You estimate the nutrition of a meal from one photo for a diabetes diary.",
     "The carbohydrates set an insulin dose, so too much is as harmful as too",
-    "little. List every food on the plate as its own item.",
+    "little. First write into visible_text every brand, product name, size and",
+    "nutrition value you can read on packaging, labels or menus, empty when",
+    "there is none. Then list every food and drink as its own item.",
     "Count only the edible part: a banana or an orange without its peel, meat",
     "or fish without bones, nothing of packaging, plates or cups.",
     "Judge each weight from plates, cutlery, hands and packaging. When unsure,",
@@ -35,30 +37,39 @@ public final class MealEstimatePrompt {
     "Country 23.5 g, a Snickers 50 g, a biscuit 10 g). A wrapper alone means",
     "one piece. Nutrition labels list values per 100 g; scale them to the",
     "piece weight, never copy them.",
-    "Take each food's nutrients per 100 g from common nutrition tables (for",
-    "example mixed rye bread 42 g carbohydrates, banana 21 g) and scale them to",
-    "its weight. Give every item's values for its weight, not per 100 g.",
+    "Drinks: take the volume from the printed size of the bottle, can or",
+    "carton (0.33 l, 0.5 l), else from the glass; 1 ml counts as 1 g. Water,",
+    "unsweetened coffee or tea and zero, light or sugar-free drinks have no",
+    "carbohydrates. Shandy, Radler and Fassbrause hold about 5 g per 100 ml,",
+    "half of a regular lemonade or cola (about 10 g).",
+    "Nutrients per 100 g, in this order: values printed on the packaging; else",
+    "the known values of the branded product you recognise; only else common",
+    "nutrition tables (for example mixed rye bread 42 g carbohydrates, banana",
+    "21 g). Scale them to the item's weight. Give every item's values for its",
+    "weight, not per 100 g.",
     "name is a short name for the whole meal. When the photo shows no food,",
     "return an empty item list.");
-  private static final JSONObject NUMBER_FIELD = new JSONObject()
-    .put("type", "number").put("minimum", 0);
-  private static final JSONObject ITEM = new JSONObject()
-    .put("type", "object")
-    .put("properties", new JSONObject()
-      .put("name", new JSONObject().put("type", "string"))
-      .put("grams", NUMBER_FIELD)
-      .put("carbs", NUMBER_FIELD)
-      .put("fat", NUMBER_FIELD)
-      .put("protein", NUMBER_FIELD)
-      .put("kcal", NUMBER_FIELD))
-    .put("required", List.of("name", "grams", "carbs", "fat", "protein", "kcal"));
-  private static final String SCHEMA = new JSONObject()
-    .put("type", "object")
-    .put("properties", new JSONObject()
-      .put("name", new JSONObject().put("type", "string"))
-      .put("items", new JSONObject().put("type", "array").put("items", ITEM)))
-    .put("required", List.of("name", "items"))
-    .toString();
+  /**
+   * The answer's shape. A text block, not a {@link JSONObject}: that one keeps
+   * no key order, and visible_text has to come first so the model reads the
+   * packaging before it writes a single number.
+   */
+  private static final String SCHEMA = """
+    {"type": "object",
+     "properties": {
+       "visible_text": {"type": "string"},
+       "name": {"type": "string"},
+       "items": {"type": "array", "items": {"type": "object",
+         "properties": {
+           "name": {"type": "string"},
+           "grams": {"type": "number", "minimum": 0},
+           "carbs": {"type": "number", "minimum": 0},
+           "fat": {"type": "number", "minimum": 0},
+           "protein": {"type": "number", "minimum": 0},
+           "kcal": {"type": "number", "minimum": 0}},
+         "required": ["name", "grams", "carbs", "fat", "protein", "kcal"]}}},
+     "required": ["visible_text", "name", "items"]}
+    """;
 
   private final MealImage image;
   private final String language;

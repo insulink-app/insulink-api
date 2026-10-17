@@ -34,6 +34,15 @@ final class MealEstimatePromptTest {
   }
 
   @Test
+  void thePackagingIsReadBeforeTheItems() {
+    var command = prompt("de").command();
+    var schema = command.get(command.indexOf("--json-schema") + 1);
+    Assertions.assertTrue(schema.indexOf("visible_text") < schema.indexOf("items"));
+    Assertions.assertTrue(new JSONObject(schema).getJSONArray("required").toList()
+      .contains("visible_text"));
+  }
+
+  @Test
   void anUnknownLanguageFallsBackToEnglish() {
     Assertions.assertTrue(prompt("fr").stdinLine().contains("English"));
   }
