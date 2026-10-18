@@ -28,4 +28,13 @@ final class MealEstimateItemTest {
     Assertions.assertEquals(53, bar.carbs());
     Assertions.assertEquals(560, bar.kcal());
   }
+
+  @Test
+  void theCountReachesTheResponseAndOldItemsHaveNone() {
+    var toast = MealEstimateItem.fromJson(new JSONObject().put("name", "Toast")
+      .put("count", 4).put("grams", 100).put("carbs", 48).put("fat", 4)
+      .put("protein", 8).put("kcal", 260));
+    Assertions.assertEquals(4, toast.information().get("count"));
+    Assertions.assertEquals(0, item(100, 53, 560).count());
+  }
 }

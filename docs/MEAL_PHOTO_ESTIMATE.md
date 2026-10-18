@@ -10,7 +10,7 @@ the plate; the totals are their sums), and the `photo_id` of the stored photo.
 ```
 
 Errors: `1600` the image is not a JPEG of at most 2 MB, `1601` no estimate came
-back (CLI missing, token expired, usage limit, timeout after 45 s).
+back (CLI missing, token expired, usage limit, timeout after 60 s).
 
 The estimate is a starting point. The app puts the carbohydrates into the bolus
 calculator's editable carbs field, where the user checks them before the dose is
@@ -24,7 +24,7 @@ photo, one run at a time:
 ```
 claude -p --input-format stream-json --output-format stream-json --verbose \
   --tools "" --strict-mcp-config --setting-sources "" --no-session-persistence \
-  --model sonnet --json-schema <schema> --system-prompt <prompt>
+  --model opus --json-schema <schema> --system-prompt <prompt>
 ```
 
 - The photo goes in as a base64 image block over **stdin**, never as a file.
@@ -48,7 +48,20 @@ are estimated by volume (the printed bottle or can size, 1 ml as 1 g). The
 schema is a text block because `JSONObject` keeps no key order, and
 `visible_text` only helps when it is written before the numbers.
 
-A run takes about 3 to 10 seconds.
+Each item then carries `count` (pieces, 0 for rice, soup, drinks) and
+`piece_grams` before `grams`. That exists because of four slices of toast,
+stacked, estimated as two in photo after photo, with two coconut macaroons
+miscounted beside them. With only `grams` to write the model never counted; now
+the prompt makes it count each piece first (crust edges of a stack, halves,
+pieces at the frame edge) and derive the weight from the count. The server
+keeps `count` on every item and returns it; the app shows a −/+ counter for
+counted foods, so a miscount is one tap instead of a new photo. Items stored
+before the count existed read as 0.
+
+The model is Opus, not Sonnet: it counts pieces on a photo noticeably better,
+at the price of a slower run and more of the subscription's usage.
+
+A run takes about 5 to 20 seconds.
 
 ## Storage
 

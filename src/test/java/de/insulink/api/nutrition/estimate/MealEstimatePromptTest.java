@@ -43,6 +43,14 @@ final class MealEstimatePromptTest {
   }
 
   @Test
+  void thePiecesAreCountedBeforeTheWeight() {
+    var command = prompt("de").command();
+    var schema = command.get(command.indexOf("--json-schema") + 1);
+    Assertions.assertTrue(schema.indexOf("\"count\"") < schema.indexOf("\"grams\""));
+    Assertions.assertTrue(schema.indexOf("piece_grams") < schema.indexOf("\"grams\""));
+  }
+
+  @Test
   void anUnknownLanguageFallsBackToEnglish() {
     Assertions.assertTrue(prompt("fr").stdinLine().contains("English"));
   }

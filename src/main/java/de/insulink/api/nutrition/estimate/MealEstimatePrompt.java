@@ -17,20 +17,37 @@ import java.util.List;
  */
 @RequiredArgsConstructor(staticName = "create")
 public final class MealEstimatePrompt {
-  private static final String MODEL = "sonnet";
+  private static final String MODEL = "opus";
   private static final String SYSTEM_PROMPT = String.join(" ",
     "You estimate the nutrition of a meal from one photo for a diabetes diary.",
     "The carbohydrates set an insulin dose, so too much is as harmful as too",
-    "little. First write into visible_text every brand, product name, size and",
-    "nutrition value you can read on packaging, labels or menus, empty when",
-    "there is none. Then list every food and drink as its own item.",
+    "little. Work in three steps, in the order of the answer's fields.",
+    "Step 1, visible_text: every brand, product name, size and nutrition value",
+    "you can read on packaging, labels or menus, empty when there is none.",
+    "Step 2, counting: a wrong count is the most common and the most costly",
+    "mistake, so count before you weigh. Scan the whole photo, every corner and",
+    "the edges of the frame, and count each piece one by one. Pieces often hide:",
+    "slices of toast or bread stacked, fanned out or overlapping show only their",
+    "crust edges, so count the edges and the layers, not only the fully visible",
+    "tops. A stack's height tells how many slices it holds (a toast slice is",
+    "about 1 cm thick). Sandwiches hold two slices each. Count halved or cut",
+    "pieces as halves (two toast halves are one slice). Count pieces lying in",
+    "the background, on a second plate or in a hand too. Look closely before",
+    "putting two different foods into one item: a coconut macaroon is not a",
+    "biscuit, a roll is not a slice of bread.",
+    "Step 3, items: one item per kind of food, carrying the count of its pieces",
+    "in count and the weight of one piece in piece_grams; grams is then count",
+    "times piece_grams. Foods without pieces (rice, pasta, soup, spreads,",
+    "drinks) take count 0 and piece_grams 0, and grams is the judged portion.",
+    "Spreads, butter, jam or cheese on bread are items of their own.",
     "Count only the edible part: a banana or an orange without its peel, meat",
     "or fish without bones, nothing of packaging, plates or cups.",
     "Judge each weight from plates, cutlery, hands and packaging. When unsure,",
     "take the typical portion, not the largest plausible one. Typical portions:",
     "a slice of bread 45 g, a bread roll 60 g, a slice of toast 25 g, a medium",
     "banana 120 g, a medium apple 150 g, a medium potato 100 g, cooked pasta or",
-    "rice 200 g as a main dish.",
+    "rice 200 g as a main dish, a coconut macaroon 20 g, a croissant 60 g, a",
+    "pretzel 80 g, butter on a slice 5 g, jam or Nutella on a slice 15 g.",
     "Packaged foods: count only the pieces that are visible and about to be",
     "eaten, never the whole pack or multipack. One bar, biscuit or chocolate",
     "piece is one piece at its single weight (a chocolate bar such as Kinder",
@@ -52,7 +69,9 @@ public final class MealEstimatePrompt {
   /**
    * The answer's shape. A text block, not a {@link JSONObject}: that one keeps
    * no key order, and visible_text has to come first so the model reads the
-   * packaging before it writes a single number.
+   * packaging before it writes a single number. Likewise count and piece_grams
+   * come before grams, so every weight starts from pieces counted one by one;
+   * the server keeps the count, so the app can correct it without a new photo.
    */
   private static final String SCHEMA = """
     {"type": "object",
@@ -62,12 +81,15 @@ public final class MealEstimatePrompt {
        "items": {"type": "array", "items": {"type": "object",
          "properties": {
            "name": {"type": "string"},
+           "count": {"type": "integer", "minimum": 0},
+           "piece_grams": {"type": "number", "minimum": 0},
            "grams": {"type": "number", "minimum": 0},
            "carbs": {"type": "number", "minimum": 0},
            "fat": {"type": "number", "minimum": 0},
            "protein": {"type": "number", "minimum": 0},
            "kcal": {"type": "number", "minimum": 0}},
-         "required": ["name", "grams", "carbs", "fat", "protein", "kcal"]}}},
+         "required": ["name", "count", "piece_grams", "grams", "carbs", "fat",
+           "protein", "kcal"]}}},
      "required": ["visible_text", "name", "items"]}
     """;
 
