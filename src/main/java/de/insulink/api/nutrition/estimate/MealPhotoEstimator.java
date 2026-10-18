@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  */
 @RequiredArgsConstructor(staticName = "create")
 public final class MealPhotoEstimator {
-  private static final long TIMEOUT_SECONDS = 45;
+  private static final long TIMEOUT_SECONDS = 60;
   private static final File WORKING_DIRECTORY =
     new File(System.getProperty("java.io.tmpdir"));
 

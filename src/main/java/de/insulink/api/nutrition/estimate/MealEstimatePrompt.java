@@ -17,7 +17,7 @@ import java.util.List;
  */
 @RequiredArgsConstructor(staticName = "create")
 public final class MealEstimatePrompt {
-  private static final String MODEL = "sonnet";
+  private static final String MODEL = "opus";
   private static final String SYSTEM_PROMPT = String.join(" ",
     "You estimate the nutrition of a meal from one photo for a diabetes diary.",
     "The carbohydrates set an insulin dose, so too much is as harmful as too",
@@ -71,7 +71,7 @@ public final class MealEstimatePrompt {
    * no key order, and visible_text has to come first so the model reads the
    * packaging before it writes a single number. Likewise count and piece_grams
    * come before grams, so every weight starts from pieces counted one by one;
-   * the server reads neither, they only make the model count.
+   * the server keeps the count, so the app can correct it without a new photo.
    */
   private static final String SCHEMA = """
     {"type": "object",

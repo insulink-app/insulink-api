@@ -75,7 +75,7 @@ final class MealEstimateControllerTest {
   void theEstimateIsReturnedAndThePhotoKeptForTheUser() throws Exception {
     estimatorAnswers(CompletableFuture.completedFuture(
       MealEstimate.create("Spaghetti", List.of(
-        MealEstimateItem.create("Spaghetti", 350, 72, 14, 18, 490)))));
+        MealEstimateItem.create("Spaghetti", 0, 350, 72, 14, 18, 490)))));
     send(JPEG)
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.name").value("Spaghetti"))

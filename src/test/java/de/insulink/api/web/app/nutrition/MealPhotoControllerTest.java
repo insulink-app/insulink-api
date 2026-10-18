@@ -47,7 +47,7 @@ final class MealPhotoControllerTest {
   private void storedFor(UUID owner) {
     var photo = MealPhoto.of(PHOTO_ID, owner, MealImage.create(JPEG),
       MealEstimate.create("Spaghetti", List.of(
-        MealEstimateItem.create("Spaghetti", 350, 72, 14, 18, 490))));
+        MealEstimateItem.create("Spaghetti", 0, 350, 72, 14, 18, 490))));
     Mockito.when(mealPhotoRepository.findById(PHOTO_ID))
       .thenReturn(CompletableFuture.completedFuture(Optional.of(photo)));
   }
