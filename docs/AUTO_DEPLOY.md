@@ -4,11 +4,13 @@ A merge to `main` reaches the server by itself, within about five minutes:
 
 1. CI (`.github/workflows/gradle.yml`, job `publish`) builds the jar and pushes
    `ghcr.io/insulink-app/insulink-api:latest` (plus a `sha-<commit>` tag). The
-   panel repo does the same for `ghcr.io/insulink-app/insulink-panel:latest`.
+   panel and predictor repos do the same for `insulink-panel` and
+   `insulink-predictor`.
 2. On the server a systemd timer (`deploy/insulink-update.timer`) runs every
    five minutes: `git pull --ff-only` of this repo (so compose and proxy changes
-   arrive too), `docker compose pull api panel`, `docker compose up -d`. Compose
-   only restarts a container whose image or configuration changed.
+   arrive too), `docker compose pull api panel predictor proxy`,
+   `docker compose up -d`, then `nginx -s reload` in the proxy. Compose only
+   restarts a container whose image or configuration changed.
 
 ## Why pull and not push
 
@@ -51,5 +53,15 @@ nginx proxy listens publicly.
 
 The checkout must stay clean: a local edit to a tracked file makes
 `git pull --ff-only` fail, and the unit stops before touching any container.
-The predictor is still built on the server (`build: ./predictor`); the timer
-leaves it alone.
+## The proxy and Postgres
+
+The proxy is the stock `nginx:alpine` with `proxy/default.conf` from this repo
+mounted. A changed config file does not recreate the container, so the timer
+reloads nginx on every run; that also picks up certificates certbot renewed.
+`nginx -s reload` checks the new config first and keeps serving the old one if
+it is broken, so a bad merge never takes the sites down (the unit run shows as
+failed in the journal).
+
+Postgres is deliberately not in the pull list: `postgres:latest` can jump a
+major version, and a data directory from one major version does not start
+under the next. Upgrade it by hand (dump, new volume, restore).
