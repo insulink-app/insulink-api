@@ -37,6 +37,13 @@ services:
       - ./api/geo:/api/geo:ro
     ports:
       - "127.0.0.1:8080:8080"
+    # The version endpoint answers once Spring is up; boot takes about 10 s.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8080/v1/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,6 +67,14 @@ services:
       RETRAIN_HOUR: "3"
     ports:
       - "127.0.0.1:8000:8000"
+    # GET / is the predictor's health endpoint. The image has no curl, so
+    # Python asks it.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     volumes:
       - ./predictor/artifacts:/app/artifacts
   # Admin panel (insulink-panel sibling repo). Serves the built React app and
@@ -78,6 +93,13 @@ services:
       - ./proxy/default.conf:/etc/nginx/conf.d/default.conf
       - ./certbot/www:/var/www/certbot
       - ./certbot/conf:/etc/letsencrypt
+    # nginx answers on an internal port (proxy/default.conf); the public
+    # blocks only redirect to HTTPS, so asking them would test nothing.
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8079/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: always
     ports:
       - "443:443"
