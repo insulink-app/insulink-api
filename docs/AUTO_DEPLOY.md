@@ -24,7 +24,7 @@ would run on it.
 
 Anyone can pull the image, so `configurations/` (JWT keys, database
 credentials) and `geo/` (GeoLite, whose license forbids redistribution) are not
-in it. Compose mounts both read-only from the server's checkout; `.dockerignore`
+in it. Compose mounts both read-only from `api/` on the server; `.dockerignore`
 keeps them out of the build context as well. The Postgres password comes from
 `.env` (`POSTGRES_PASSWORD`), not from the public compose file. Use URL-safe
 characters only: it is also spliced into the predictor's `DATABASE_URL`.
@@ -33,26 +33,82 @@ Postgres, api and predictor bind to `127.0.0.1`. Docker's port rules bypass
 `ufw`, so a bare `"5432:5432"` publishes the database to the internet; only the
 nginx proxy listens publicly.
 
+## The folder on the server
+
+The server holds no source code, only what the containers mount. It is a
+sparse clone of this repo with exactly three tracked paths checked out, plus
+the server-only state that `.gitignore` keeps out of git:
+
+```
+/home/insulink/deploy/
+  docker-compose.yml           tracked
+  proxy/default.conf           tracked
+  deploy/insulink-update.*     tracked
+  .env                         POSTGRES_PASSWORD, CLAUDE_CODE_OAUTH_TOKEN
+  api/configurations/          config.ini
+  api/geo/                     GeoLite2-City.mmdb
+  predictor/artifacts/         the trained per-user models
+  certbot/                     www/ and conf/ (the certificates)
+```
+
+Compose pins `name: insulink`, so the Postgres volume stays `insulink_pgdata`
+whatever the folder is called. For local development the same layout applies:
+`docker compose` mounts `./api/configurations`, while `./gradlew bootRun`
+still reads `./configurations`.
+
 ## Server setup (once)
 
-1. The GHCR packages must be **public** (GitHub → package → settings → change
-   visibility), or the server needs `docker login ghcr.io`.
-2. `.env` next to `docker-compose.yml` holds `POSTGRES_PASSWORD` and
-   `CLAUDE_CODE_OAUTH_TOKEN`. On an existing volume Postgres keeps the password
-   it was created with: change it with
+1. The GHCR packages (`insulink-api`, `insulink-panel`, `insulink-predictor`)
+   must be **public** (GitHub, package settings, change visibility), or the
+   server needs `docker login ghcr.io`.
+2. Back up the database first:
+   `docker exec insulink-postgres pg_dumpall -U postgres > ~/insulink-backup.sql`.
+   Check `docker volume ls` shows `insulink_pgdata`. A folder named
+   `insulink` (or the home of user `insulink`) gave exactly that name; with
+   another prefix, change the `name:` pin in this repo first, or Postgres
+   starts on an empty volume.
+3. Move the old hand-built folder into the layout above. `OLD` is wherever
+   `docker-compose.yml`, `build`, `Dockerfile`, `panel` and `predictor` lie
+   today:
+   ```
+   OLD=~/insulink
+   cd "$OLD" && docker compose down
+   mkdir -p ~/deploy/api ~/deploy/predictor
+   mv configurations geo ~/deploy/api/
+   mv predictor/artifacts ~/deploy/predictor/
+   mv certbot .env ~/deploy/
+   rm -rf build Dockerfile panel predictor proxy docker-compose.yml
+   cd ~/deploy
+   git init -b main
+   git remote add origin https://github.com/insulink-app/insulink-api.git
+   git sparse-checkout set --no-cone /docker-compose.yml /proxy/ /deploy/
+   git pull origin main
+   git branch -u origin/main
+   ```
+   The `rm` names each old item on purpose, so it is safe even when `OLD` is
+   the home folder itself. Everything it deletes is in the images now.
+4. Add `POSTGRES_PASSWORD=<new>` to `.env` (next to `CLAUDE_CODE_OAUTH_TOKEN`);
+   compose refuses to start without it. On an existing volume Postgres keeps
+   the password it was created with, so set the new one inside:
+   `docker compose up -d postgres`, then
    `docker compose exec postgres psql -U postgres -c "ALTER USER postgres PASSWORD '<new>'"`,
-   then put the same value into `.env` and the database section of `config.ini`.
-3. Adjust `WorkingDirectory` in `deploy/insulink-update.service` to the
-   checkout, then:
+   and put the same value into the database section of
+   `api/configurations/config.ini`.
+5. `docker compose pull && docker compose up -d`, then install the timer:
    ```
    sudo cp deploy/insulink-update.* /etc/systemd/system/
    sudo systemctl daemon-reload
    sudo systemctl enable --now insulink-update.timer
    ```
-4. Check a run: `journalctl -u insulink-update.service -n 50`.
+   The unit runs as user `insulink` in `/home/insulink/deploy` (git refuses
+   to pull as root in a folder another user owns); that user must be in the
+   `docker` group. Edit the copy in `/etc/systemd/system/` for another
+   user or folder.
+6. Check a run: `journalctl -u insulink-update.service -n 50`.
 
-The checkout must stay clean: a local edit to a tracked file makes
+Leave the tracked files alone on the server: a local edit makes
 `git pull --ff-only` fail, and the unit stops before touching any container.
+
 ## The proxy and Postgres
 
 The proxy is the stock `nginx:alpine` with `proxy/default.conf` from this repo

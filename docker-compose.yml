@@ -1,3 +1,6 @@
+# Pinned, so the named volumes (pgdata) stay the same whatever the folder on
+# the server is called; the project name used to come from the folder name.
+name: insulink
 services:
   postgres:
     image: postgres:latest
@@ -30,8 +33,8 @@ services:
     environment:
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
     volumes:
-      - ./configurations:/api/configurations:ro
-      - ./geo:/api/geo:ro
+      - ./api/configurations:/api/configurations:ro
+      - ./api/geo:/api/geo:ro
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
