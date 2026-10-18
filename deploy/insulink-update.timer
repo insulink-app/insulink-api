@@ -1,0 +1,10 @@
+# Runs insulink-update.service every five minutes.
+[Unit]
+Description=Update the Insulink stack every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

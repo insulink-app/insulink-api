@@ -5,10 +5,14 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      # From .env next to this file (not committed); this file is public.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: insulink
+    # Localhost only: Docker's port rules bypass ufw, so a bare "5432:5432"
+    # puts the database on the internet. The host still reaches it for
+    # training the predictor.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
@@ -16,15 +20,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  # Built and published by CI on every push to main; the server pulls it on a
+  # timer (docs/AUTO_DEPLOY.md). The image holds no secrets, they are mounted.
   api:
-    build: .
+    image: ghcr.io/insulink-app/insulink-api:latest
     container_name: insulink-api
     restart: always
     # From .env next to this file (not committed); see docs/MEAL_PHOTO_ESTIMATE.md.
     environment:
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+    volumes:
+      - ./configurations:/api/configurations:ro
+      - ./geo:/api/geo:ro
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,18 +50,18 @@ services:
         condition: service_healthy
     environment:
       # Reach Postgres over the compose network (service name "postgres", port 5432).
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/insulink
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/insulink
       MODELS_DIR: /app/artifacts/models   # per-user models (locally-mounted path)
       ENABLE_SCHEDULER: "true"
       RETRAIN_HOUR: "3"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./predictor/artifacts:/app/artifacts
   # Admin panel (insulink-panel sibling repo). Serves the built React app and
   # proxies /v1/ to the api itself; the public proxy only terminates TLS for it.
   panel:
-    build: ./panel
+    image: ghcr.io/insulink-app/insulink-panel:latest
     container_name: insulink-panel
     restart: always
     environment:

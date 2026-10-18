@@ -6,3 +6,5 @@ src/
 gradle/
 build/tmp/
 build/classes/
+configurations/
+geo/

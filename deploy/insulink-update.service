@@ -1,0 +1,15 @@
+# Pulls the latest compose file and images and restarts what changed.
+# Copy to /etc/systemd/system/ together with insulink-update.timer
+# (docs/AUTO_DEPLOY.md). WorkingDirectory is the server's insulink-api clone.
+[Unit]
+Description=Update the Insulink stack from GHCR
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/insulink/insulink-api
+ExecStart=git pull --ff-only
+ExecStart=docker compose pull api panel
+ExecStart=docker compose up -d
+ExecStart=docker image prune -f
