@@ -53,7 +53,11 @@ Each item then carries `count` (pieces, 0 for rice, soup, drinks) and
 stacked, estimated as two in photo after photo, with two coconut macaroons
 miscounted beside them. With only `grams` to write the model never counted; now
 the prompt makes it count each piece first (crust edges of a stack, halves,
-pieces at the frame edge) and derive the weight from the count. The server
+pieces at the frame edge) and derive the weight from the count. Only food eaten piece by piece gets a count (slices, rolls, biscuits,
+fruit); toppings such as cheese or butter, even in slices, take 0, so the app
+offers no counter nobody needs. Item names are the plain food in one or two
+words ("Toast", not "Toastbrot (Sandwichtoast, 4 Scheiben als 4 Dreiecke)");
+the details stay in `visible_text`. The server
 keeps `count` on every item and returns it; the app shows a −/+ counter for
 counted foods, so a miscount is one tap instead of a new photo. Items stored
 before the count existed read as 0.
