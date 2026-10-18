@@ -48,6 +48,14 @@ are estimated by volume (the printed bottle or can size, 1 ml as 1 g). The
 schema is a text block because `JSONObject` keeps no key order, and
 `visible_text` only helps when it is written before the numbers.
 
+Each item then carries `count` (pieces, 0 for rice, soup, drinks) and
+`piece_grams` before `grams`. That exists because of four slices of toast,
+stacked, estimated as two in photo after photo, with two coconut macaroons
+miscounted beside them. With only `grams` to write the model never counted; now
+the prompt makes it count each piece first (crust edges of a stack, halves,
+pieces at the frame edge) and derive the weight from the count. The server
+reads neither field, they only steer the model.
+
 A run takes about 3 to 10 seconds.
 
 ## Storage
