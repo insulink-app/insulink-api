@@ -4,7 +4,7 @@
 # the old one keeps serving. Postgres is never pulled: postgres:latest could
 # jump a major version, which a data directory cannot follow.
 # Copy to /etc/systemd/system/ together with insulink-update.timer
-# (docs/AUTO_DEPLOY.md). WorkingDirectory is the server's insulink-api clone.
+# (docs/AUTO_DEPLOY.md). WorkingDirectory is the server's deploy folder.
 [Unit]
 Description=Update the Insulink stack from GHCR
 After=docker.service network-online.target
@@ -12,7 +12,10 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/insulink/insulink-api
+# As the folder's owner: git refuses a repo owned by another user (dubious
+# ownership). The user must be in the docker group.
+User=insulink
+WorkingDirectory=/home/insulink/deploy
 ExecStart=git pull --ff-only
 ExecStart=docker compose pull api panel predictor proxy
 ExecStart=docker compose up -d

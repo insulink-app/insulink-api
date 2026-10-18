@@ -38,3 +38,8 @@ geo
 .claude/
 # Compose secrets (CLAUDE_CODE_OAUTH_TOKEN)
 .env
+
+# Server-only deploy state next to docker-compose.yml (docs/AUTO_DEPLOY.md)
+/api/
+/certbot/
+/predictor/
