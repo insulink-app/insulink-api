@@ -9,9 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
   && rm -rf /var/lib/apt/lists/*
 ENV PATH="/root/.local/bin:${PATH}" DISABLE_AUTOUPDATER=1
 
+# The image is public on GHCR, so it holds no secrets: configurations/ (JWT
+# keys, database credentials) and geo/ (GeoLite, not redistributable) are
+# mounted at runtime by docker compose (docs/AUTO_DEPLOY.md).
 COPY build/libs/*.jar api.jar
-COPY configurations/ configurations/
-COPY geo/ geo/
 
 EXPOSE 8080
 
