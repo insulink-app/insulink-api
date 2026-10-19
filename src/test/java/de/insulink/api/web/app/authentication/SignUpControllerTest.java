@@ -154,6 +154,17 @@ final class SignUpControllerTest {
   }
 
   @Test
+  void aPasswordBelowTheMinimumLengthIsRefusedWithItsOwnCode() throws Exception {
+    var payload = """
+      {"name": "Lukas", "password": "short", "language": "de",
+       "legal_accepted": true, "settings": "{}"}""";
+    endpoint.call(post("/signup/").contentType(MediaType.APPLICATION_JSON)
+        .content(payload))
+      .andExpect(jsonPath("$.error.code").value(1005));
+    Mockito.verify(userRepository, Mockito.never()).save(Mockito.any());
+  }
+
+  @Test
   void aBlankNameIsRefused() throws Exception {
     signUp("   ", true).andExpect(jsonPath("$.error.code").value(1000));
     Mockito.verify(userRepository, Mockito.never()).save(Mockito.any());

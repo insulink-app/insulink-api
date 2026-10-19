@@ -1,46 +1,36 @@
 package de.insulink.api.web.security;
 
-import com.google.common.collect.Lists;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.web.util.ServletRequestPathUtils;
 
 import java.lang.annotation.Annotation;
-import java.util.List;
 
 @Component
 public final class EndpointRepository {
   @Autowired
   private RequestMappingHandlerMapping requestMappingHandlerMapping;
-  private final List<Endpoint> endpoints = Lists.newArrayList();
 
-  private void load() {
-    for (var entry : requestMappingHandlerMapping.getHandlerMethods().entrySet()) {
-      var info = entry.getKey();
-      var path = "/v1" + info.getPatternValues().iterator().next();
-      var annotations = Lists.<Class<? extends Annotation>>newArrayList();
-      for (var annotation : entry.getValue().getMethod().getAnnotations()) {
-        annotations.add(annotation.annotationType());
-      }
-      endpoints.add(Endpoint.create(path, annotations));
-    }
-  }
-
-  public List<Endpoint> findAnnotatedEndpoints(
-    Class<? extends Annotation> annotation
+  /**
+   * Whether the request routes to a handler method carrying the annotation.
+   * Asks the same handler mapping the dispatcher routes with, so an encoded,
+   * doubled or parameterised path can never reach a guarded method while
+   * looking unguarded here. A request the mapping cannot even resolve (a wrong
+   * method on a known path) counts as annotated: the guard fails closed.
+   */
+  public boolean routesToAnnotated(
+    HttpServletRequest request, Class<? extends Annotation> annotation
   ) {
-    if (endpoints.isEmpty()) {
-      load();
+    try {
+      ServletRequestPathUtils.parseAndCache(request);
+      var chain = requestMappingHandlerMapping.getHandler(request);
+      return chain != null && chain.getHandler() instanceof HandlerMethod method
+        && method.hasMethodAnnotation(annotation);
+    } catch (Exception exception) {
+      return true;
     }
-    return endpoints.stream()
-      .filter(endpoint -> endpoint.annotations().contains(annotation))
-      .toList();
-  }
-
-  public List<Endpoint> all() {
-    if (endpoints.isEmpty()) {
-      load();
-    }
-    return List.copyOf(endpoints);
   }
 }

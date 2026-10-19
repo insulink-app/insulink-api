@@ -19,6 +19,9 @@ public final class ApiRequestBody {
     return create(new JSONObject(payload), response);
   }
 
+  /** Layers of escaping peeled before whatever is left loses its brackets. */
+  private static final int MAXIMUM_SANITIZER_PASSES = 5;
+
   private final JSONObject body;
   private final HttpServletResponse response;
   private final PolicyFactory sanitizerPolicy = new HtmlPolicyBuilder().toFactory();
@@ -54,7 +57,7 @@ public final class ApiRequestBody {
    * @return The value behind the key
    */
   public String getSanitizedString(String key) {
-    return HtmlUtils.htmlUnescape(sanitizerPolicy.sanitize(getString(key)));
+    return sanitize(getString(key), sanitizerPolicy);
   }
 
   /**
@@ -64,7 +67,7 @@ public final class ApiRequestBody {
    * @return The value behind the key
    */
   public String getSanitizedString(String key, PolicyFactory policy) {
-    return HtmlUtils.htmlUnescape(policy.sanitize(getString(key)));
+    return sanitize(getString(key), policy);
   }
 
   /**
@@ -75,7 +78,26 @@ public final class ApiRequestBody {
    * @return The value behind the key
    */
   public String getSanitizedString(String key, int maxLength) {
-    return HtmlUtils.htmlUnescape(sanitizerPolicy.sanitize(getString(key, maxLength)));
+    return sanitize(getString(key, maxLength), sanitizerPolicy);
+  }
+
+  /**
+   * Plain text without markup. The sanitizer escapes what it keeps and the
+   * result is unescaped for storage, so markup sent in escaped form
+   * ({@code &lt;b&gt;}) would come out of one pass as real markup. Passing again
+   * until nothing changes peels every layer of escaping; ordinary text such as
+   * {@code 5 < 6} is stable after the first pass and stays as it was.
+   */
+  private String sanitize(String value, PolicyFactory policy) {
+    var current = value;
+    for (var pass = 0; pass < MAXIMUM_SANITIZER_PASSES; pass++) {
+      var next = HtmlUtils.htmlUnescape(policy.sanitize(current));
+      if (next.equals(current)) {
+        return next;
+      }
+      current = next;
+    }
+    return current.replaceAll("[<>]", "");
   }
 
   /**

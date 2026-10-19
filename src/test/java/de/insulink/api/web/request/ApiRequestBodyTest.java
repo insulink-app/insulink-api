@@ -86,6 +86,15 @@ final class ApiRequestBodyTest {
     Assertions.assertEquals("Bread & butter, 5 < 6", body.getSanitizedString("note"));
   }
 
+  /** Escaped markup used to come out of a single pass as real markup. */
+  @Test
+  void sanitizedStringDropsMarkupSentInEscapedForm() {
+    var body = bodyOf("{\"note\": \"&lt;script&gt;alert(1)&lt;/script&gt;Pasta\", "
+      + "\"twice\": \"&amp;lt;b&amp;gt;Brot&amp;lt;/b&amp;gt;\"}");
+    Assertions.assertEquals("Pasta", body.getSanitizedString("note"));
+    Assertions.assertFalse(body.getSanitizedString("twice").contains("<"));
+  }
+
   @Test
   void malformedUuidIsRejectedInsteadOfGuessed() {
     var body = bodyOf("{\"user_id\": \"not-a-uuid\"}");

@@ -19,6 +19,12 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(staticName = "create")
 public final class User {
+  /**
+   * The shortest password a new account or a password change may set. Signing
+   * in with an older, shorter one keeps working.
+   */
+  public static final int MINIMUM_PASSWORD_LENGTH = 10;
+
   @Id
   @Column(name = "id", nullable = false, updatable = false)
   private UUID id;

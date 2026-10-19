@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -48,7 +49,17 @@ public final class MealEstimateController extends AppRestController {
     this.mealPhotoRepository = mealPhotoRepository;
   }
 
-  /** 1600 for a photo that is not a JPEG within the cap, 1601 when no estimate came. */
+  /**
+   * Estimates per user and day. Each one runs the model on the server's
+   * subscription and keeps a photo, so without a ceiling one account could use
+   * up both.
+   */
+  private static final int MAXIMUM_ESTIMATES_PER_DAY = 30;
+
+  /**
+   * 1600 for a photo that is not a JPEG within the cap, 1601 when no estimate
+   * came, 1603 once the day's estimates are used up.
+   */
   @AppEndpoint
   @RequestMapping(path = "/nutrition/estimate/", method = RequestMethod.POST)
   public CompletableFuture<ApiResponse> estimateMeal(
@@ -61,7 +72,17 @@ public final class MealEstimateController extends AppRestController {
       return ApiResponse.error(1600, "invalid image").future();
     }
     var userId = findUserId(request);
-    return estimator.estimate(image, body.getString("language", 2))
+    var dayAgo = System.currentTimeMillis() - Duration.ofDays(1).toMillis();
+    return mealPhotoRepository.countByUserIdAndTakenAtGreaterThan(userId, dayAgo)
+      .thenCompose(today -> today >= MAXIMUM_ESTIMATES_PER_DAY ?
+        ApiResponse.error(1603, "daily limit reached").future() :
+        estimateMeal(userId, image, body.getString("language", 2)));
+  }
+
+  private CompletableFuture<ApiResponse> estimateMeal(
+    UUID userId, MealImage image, String language
+  ) {
+    return estimator.estimate(image, language)
       .thenCompose(estimate -> keep(userId, image, estimate))
       .thenApply(this::estimateResponse)
       .exceptionally(this::estimateFailed);
