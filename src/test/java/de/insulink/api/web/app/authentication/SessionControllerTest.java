@@ -9,6 +9,7 @@ import de.insulink.api.user.session.UserSessionStatus;
 import de.insulink.api.web.AppControllerTest;
 import de.insulink.api.web.AsyncEndpoint;
 import de.insulink.api.web.TestAuthentication;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,23 +103,41 @@ final class SessionControllerTest {
 
   /**
    * A refresh whose response was lost has already rotated; the app can only
-   * retry with the token it still holds, and that must not log it out.
+   * retry with the token it still holds, and that must not log it out. Nor may
+   * the retry strand whoever got the first answer.
    */
   @Test
-  void theTokenThatWasJustReplacedGetsTheCurrentOneAgain() throws Exception {
-    refresh(currentRefreshToken);
-    var rotated = session.lastRefreshToken();
+  void theTokenThatWasJustReplacedStillGetsAFreshPair() throws Exception {
+    var first = refreshedToken(currentRefreshToken);
     refresh(currentRefreshToken)
       .andExpect(jsonPath("$.success").value(true))
-      .andExpect(jsonPath("$.refresh_token").value(rotated));
-    Assertions.assertEquals(rotated, session.lastRefreshToken());
+      .andExpect(jsonPath("$.refresh_token").isNotEmpty());
+    refresh(first).andExpect(jsonPath("$.success").value(true));
   }
 
+  /**
+   * An older copy coming back is a stolen token or one already traded in;
+   * either way the session is not trusted any more.
+   */
   @Test
-  void aTokenTwoRotationsOldIsNoLongerAccepted() throws Exception {
+  void aTokenTwoRotationsOldClosesTheSession() throws Exception {
     refresh(currentRefreshToken);
     session.updateRefreshToken("third");
     refresh(currentRefreshToken).andExpect(jsonPath("$.error.code").value(1002));
+    Assertions.assertTrue(session.status().isClosed());
+  }
+
+  /** A copy of the session table must not hand out a usable session. */
+  @Test
+  void onlyADigestOfTheIssuedTokenIsStored() throws Exception {
+    var issued = refreshedToken(currentRefreshToken);
+    Assertions.assertNotEquals(issued, session.lastRefreshToken());
+    Assertions.assertFalse(session.lastRefreshToken().contains("."));
+  }
+
+  private String refreshedToken(String token) throws Exception {
+    var body = refresh(token).andReturn().getResponse().getContentAsString();
+    return new JSONObject(body).getString("refresh_token");
   }
 
   @Test

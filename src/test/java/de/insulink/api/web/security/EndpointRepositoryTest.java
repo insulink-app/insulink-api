@@ -13,16 +13,15 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.util.List;
-
 /**
- * What the authentication filter reads at startup to know which paths to guard.
- * Two things have to hold or the whole guard silently stops working: the paths
- * carry the {@code /v1} prefix the servlet actually sees, and an endpoint
- * without {@code @AppEndpoint} — signup, login, the statistic counters — is not
- * in the list.
+ * What the authentication filter asks to know whether to guard a request. It
+ * has to agree with the dispatcher on every spelling of a path: the guard used
+ * to compare the raw URI, so {@code /v1/glucose/%68istory/} reached the
+ * controller unguarded. An endpoint without {@code @AppEndpoint} — signup,
+ * login, the statistic counters — must stay open.
  */
 @AppControllerTest({GlucoseHistoryController.class, StatisticController.class})
 @Import(EndpointRepository.class)
@@ -40,37 +39,34 @@ final class EndpointRepositoryTest {
   @MockitoBean
   private StatisticConfiguration statisticConfiguration;
 
-  private List<String> guardedPaths() {
-    return endpointRepository.findAnnotatedEndpoints(AppEndpoint.class)
-      .stream().map(Endpoint::path).toList();
+  private boolean guarded(String method, String uri) {
+    var request = new MockHttpServletRequest(method, uri);
+    request.setContextPath("/v1");
+    return endpointRepository.routesToAnnotated(request, AppEndpoint.class);
   }
 
   @Test
-  void anAnnotatedEndpointIsListedUnderItsServletPath() {
-    Assertions.assertTrue(guardedPaths().contains("/v1/glucose/history/"),
-      guardedPaths().toString());
+  void anAnnotatedEndpointIsGuarded() {
+    Assertions.assertTrue(guarded("GET", "/v1/glucose/history/"));
+  }
+
+  @Test
+  void anEncodedSpellingOfAnAnnotatedPathIsGuardedToo() {
+    Assertions.assertTrue(guarded("GET", "/v1/glucose/%68istory/"));
   }
 
   @Test
   void anUnannotatedEndpointIsNotGuarded() {
-    Assertions.assertFalse(
-      guardedPaths().contains("/v1/statistic/app/installation/"),
-      guardedPaths().toString());
+    Assertions.assertFalse(guarded("POST", "/v1/statistic/app/installation/"));
   }
 
   @Test
-  void everyMappedEndpointShowsUpInTheFullList() {
-    var allPaths = endpointRepository.all().stream().map(Endpoint::path).toList();
-    Assertions.assertTrue(allPaths.contains("/v1/glucose/history/"),
-      allPaths.toString());
-    Assertions.assertTrue(allPaths.contains("/v1/statistic/app/installation/"),
-      allPaths.toString());
+  void anUnknownPathIsLeftToTheNotFoundAnswer() {
+    Assertions.assertFalse(guarded("GET", "/v1/does/not/exist/"));
   }
 
   @Test
-  void anEndpointKnowsWhichAnnotationsItCarries() {
-    var guarded = endpointRepository.findAnnotatedEndpoints(AppEndpoint.class)
-      .getFirst();
-    Assertions.assertTrue(guarded.annotations().contains(AppEndpoint.class));
+  void aWrongMethodOnAGuardedPathFailsClosed() {
+    Assertions.assertTrue(guarded("DELETE", "/v1/glucose/history/"));
   }
 }

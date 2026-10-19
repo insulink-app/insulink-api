@@ -14,7 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -35,6 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * in rather than failing.
  */
 @AppControllerTest(SignInController.class)
+@Import(SignInThrottle.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 final class SignInControllerTest {
   private static final UUID USER_ID = UUID.randomUUID();
   private static final String PASSWORD = "correct horse battery staple";
@@ -117,6 +121,28 @@ final class SignInControllerTest {
     signIn("Unbekannt", PASSWORD)
       .andExpect(jsonPath("$.success").value(false))
       .andExpect(jsonPath("$.error.code").value(1000));
+  }
+
+  /**
+   * Five wrong guesses lock the account for a while: from then on even the
+   * right password is refused without being checked, so guessing gains nothing.
+   */
+  @Test
+  void repeatedWrongPasswordsLockTheAccountForAWhile() throws Exception {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      signIn("Lukas", "wrong").andExpect(jsonPath("$.error.code").value(1000));
+    }
+    signIn("Lukas", PASSWORD).andExpect(jsonPath("$.error.code").value(1003));
+    Mockito.verify(sessionRepository, Mockito.never()).save(Mockito.any());
+  }
+
+  @Test
+  void aSuccessfulSignInClearsEarlierFailures() throws Exception {
+    for (var attempt = 0; attempt < 4; attempt++) {
+      signIn("Lukas", "wrong");
+    }
+    signIn("Lukas", PASSWORD).andExpect(jsonPath("$.success").value(true));
+    signIn("Lukas", "wrong").andExpect(jsonPath("$.error.code").value(1000));
   }
 
   /**

@@ -46,12 +46,19 @@ public class SignUpController extends AuthenticationController {
     this.hashing = hashing;
   }
 
+  /** 1005 for a password below the minimum length, 1000 for anything else. */
   @RequestMapping(path = "/signup/", method = RequestMethod.POST)
   public CompletableFuture<ApiResponse> signUp(
     HttpServletRequest request, @RequestBody String payload,
     HttpServletResponse response
   ) {
     var body = ApiRequestBody.of(payload, response);
+    if (body.getString("password").strip().length() < User.MINIMUM_PASSWORD_LENGTH) {
+      return ApiResponse.error(1005).future();
+    }
+    if (body.getString("settings").length() > UserSettings.MAXIMUM_CONTENT_LENGTH) {
+      return ApiResponse.error(1000).future();
+    }
     return signUp(body)
       .exceptionally(_ -> null)
       .thenCompose(user -> user == null ?

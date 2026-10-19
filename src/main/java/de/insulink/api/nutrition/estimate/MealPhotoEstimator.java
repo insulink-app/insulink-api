@@ -6,10 +6,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -27,13 +29,25 @@ public final class MealPhotoEstimator {
   private static final File WORKING_DIRECTORY =
     new File(System.getProperty("java.io.tmpdir"));
 
-  private final ExecutorService queue = Executors.newSingleThreadExecutor();
+  /** Photos allowed to wait for the one running estimate; more are refused. */
+  private static final int MAXIMUM_WAITING = 5;
 
-  /** The estimate, or a failed future when the CLI gave none in time. */
+  private final ExecutorService queue = new ThreadPoolExecutor(1, 1, 0,
+    TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(MAXIMUM_WAITING));
+
+  /**
+   * The estimate, or a failed future when the CLI gave none in time or the
+   * queue is full. A full queue answers at once instead of piling up photos in
+   * memory that would each wait minutes.
+   */
   public CompletableFuture<MealEstimate> estimate(MealImage image, String language) {
     var prompt = MealEstimatePrompt.create(image, language);
-    return CompletableFuture.supplyAsync(() -> run(prompt), queue)
-      .thenApply(this::parse);
+    try {
+      return CompletableFuture.supplyAsync(() -> run(prompt), queue)
+        .thenApply(this::parse);
+    } catch (RejectedExecutionException exception) {
+      return CompletableFuture.failedFuture(exception);
+    }
   }
 
   /** The estimate, or a failure that carries what the CLI said instead. */

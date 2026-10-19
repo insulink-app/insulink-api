@@ -57,7 +57,7 @@ public final class UserSettingsController extends AppRestController {
     HttpServletResponse response
   ) {
     var content = ApiRequestBody.of(payload, response).getString("settings");
-    if (!isValidJson(content)) {
+    if (content.length() > UserSettings.MAXIMUM_CONTENT_LENGTH || !isValidJson(content)) {
       return ApiResponse.error(1000).future();
     }
     var settings = UserSettings.create(findUserId(request), content,

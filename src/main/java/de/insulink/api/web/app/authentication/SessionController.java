@@ -65,30 +65,32 @@ public final class SessionController extends AuthenticationController {
           user.get(), session.get())));
   }
 
+  /**
+   * A properly signed token the session no longer accepts is an older copy
+   * coming back: either a stolen one or one the owner already traded in. Both
+   * mean the session can no longer be trusted, so it is closed.
+   */
   private ApiResponse refresh(
     String refreshToken, User user, UserSession session
   ) {
     if (!session.acceptsRefreshToken(refreshToken)) {
+      closeSession(session);
       return ApiResponse.error(1002);
     }
     var authenticationToken = generateAuthenticationToken(user.id(), session.id());
     return ApiResponse.success(Map.of(
       "authentication_token", authenticationToken,
-      "refresh_token", redeemRefreshToken(refreshToken, user, session)));
+      "refresh_token", rotateRefreshToken(user, session)));
   }
 
   /**
-   * The refresh token to hand back. Only the current one rotates; the one it
-   * replaced gets the current one again, so a retried or doubled refresh (the
-   * app and its background service at once) ends on the same token instead of
-   * racing each other into a logout.
+   * Hands out a new refresh token for both the current and the replaced one.
+   * Only a digest is stored, so the current token cannot be handed back again;
+   * a retried or doubled refresh (the app and its background service at once)
+   * still works, because the token the other caller holds becomes the replaced
+   * one and stays good for one more rotation.
    */
-  private String redeemRefreshToken(
-    String refreshToken, User user, UserSession session
-  ) {
-    if (!refreshToken.equals(session.lastRefreshToken())) {
-      return session.lastRefreshToken();
-    }
+  private String rotateRefreshToken(User user, UserSession session) {
     var newRefreshToken = generateRefreshToken(user.id(), session.id());
     session.updateRefreshToken(newRefreshToken);
     sessionRepository().save(session);

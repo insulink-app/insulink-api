@@ -52,8 +52,12 @@ public class AuthenticationController extends AppRestController {
       .compact();
   }
 
+  /**
+   * Every refresh hands out a new token, so this only ends a session that went
+   * unused for this long.
+   */
   private static final long MAXIMUM_REFRESH_EXPIRATION_TIME =
-    1000L * 60 * 60 * 24 * 365;
+    1000L * 60 * 60 * 24 * 90;
 
   protected String generateRefreshToken(UUID userId, UUID sessionId) {
     var expirationDate = new Date(System.currentTimeMillis() +
@@ -112,7 +116,8 @@ public class AuthenticationController extends AppRestController {
     }
     var session = UserSession.create(sessionId, userId,
       UserSessionStatus.ACTIVE, platform, ipAddress, country, city,
-      System.currentTimeMillis(), refreshToken, System.currentTimeMillis(), null);
+      System.currentTimeMillis(), null, System.currentTimeMillis(), null);
+    session.updateRefreshToken(refreshToken);
     return sessionRepository.save(session);
   }
 }

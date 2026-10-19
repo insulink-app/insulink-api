@@ -56,6 +56,13 @@ final class MealEstimateControllerTest {
       .thenReturn(CompletableFuture.completedFuture(PHOTO_ID));
     Mockito.when(mealPhotoRepository.save(Mockito.any()))
       .thenAnswer(call -> CompletableFuture.completedFuture(call.getArgument(0)));
+    estimatesToday(0L);
+  }
+
+  private void estimatesToday(long count) {
+    Mockito.when(mealPhotoRepository.countByUserIdAndTakenAtGreaterThan(
+        Mockito.eq(USER_ID), Mockito.anyLong()))
+      .thenReturn(CompletableFuture.completedFuture(count));
   }
 
   private void estimatorAnswers(CompletableFuture<MealEstimate> answer) {
@@ -93,6 +100,14 @@ final class MealEstimateControllerTest {
   void anImageThatIsNotAJpegNeverReachesTheEstimator() throws Exception {
     send(new byte[]{0x01, 0x02, 0x03, 0x04})
       .andExpect(jsonPath("$.error.code").value(1600));
+    Mockito.verifyNoInteractions(estimator);
+  }
+
+  /** The model runs on the server's subscription; one account cannot use it up. */
+  @Test
+  void theDailyLimitStopsFurtherEstimatesBeforeTheEstimatorRuns() throws Exception {
+    estimatesToday(30L);
+    send(JPEG).andExpect(jsonPath("$.error.code").value(1603));
     Mockito.verifyNoInteractions(estimator);
   }
 

@@ -7,6 +7,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Entity
@@ -53,14 +57,37 @@ public final class UserSession {
    * come back with the old one. Refusing it logged the user out.
    */
   public boolean acceptsRefreshToken(String refreshToken) {
-    return !status.isClosed() && (refreshToken.equals(lastRefreshToken) ||
-      refreshToken.equals(previousRefreshToken));
+    return !status.isClosed() && (matches(lastRefreshToken, refreshToken) ||
+      matches(previousRefreshToken, refreshToken));
   }
 
+  /**
+   * Stores only a digest of the new token, so a copy of the table hands out no
+   * usable session. The one it replaces is kept as it was stored.
+   */
   public void updateRefreshToken(String refreshToken) {
     this.previousRefreshToken = this.lastRefreshToken;
-    this.lastRefreshToken = refreshToken;
+    this.lastRefreshToken = digest(refreshToken);
     this.lastRefreshedAt = System.currentTimeMillis();
+  }
+
+  /**
+   * A stored value matches its digest, or the token itself for rows written
+   * before tokens were stored as digests; those age out with their next
+   * rotation.
+   */
+  private boolean matches(String stored, String refreshToken) {
+    return stored != null && (stored.equals(digest(refreshToken)) ||
+      stored.equals(refreshToken));
+  }
+
+  private String digest(String refreshToken) {
+    try {
+      return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+        .digest(refreshToken.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException(exception);
+    }
   }
 }
 

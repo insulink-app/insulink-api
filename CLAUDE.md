@@ -36,7 +36,7 @@ Runtime requires files that are **not** in the repo:
 
 **Security / request flow.** Two `OncePerRequestFilter`s:
 - `EquipmentFilter` — CORS headers; short-circuits `OPTIONS`. Allowed origins come from `config.ini`.
-- `AppAuthenticationFilter` — validates the `Authorization: Bearer <JWT>` against `authenticationKey`. It only runs on endpoints whose handler method is annotated `@AppEndpoint`; `EndpointRepository` discovers these by reflecting over Spring's `RequestMappingHandlerMapping` at runtime.
+- `AppAuthenticationFilter` — validates the `Authorization: Bearer <JWT>` against `authenticationKey` and checks that the session it names is still `ACTIVE`. It only runs on requests that route to a handler method annotated `@AppEndpoint`; `EndpointRepository.routesToAnnotated` asks Spring's `RequestMappingHandlerMapping` per request, so every spelling of a path is judged the way the dispatcher routes it. See `docs/ACCOUNT_SECURITY.md` for sessions, sign-in throttling, the wrapped data key and the error codes.
 
 Three JWT signing keys (`verificationKey`, `authenticationKey`, `refreshKey`) are `@Bean`s qualified by name in `api/ApiModule`, derived from `config.ini`. Authenticated app controllers extend `AppRestController`, which parses the JWT to recover the user id / session id.
 

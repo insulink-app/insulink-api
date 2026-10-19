@@ -19,6 +19,12 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(staticName = "create")
 public final class UserSettings {
+  /**
+   * Many times the size of a real settings blob. Every changed key becomes a
+   * history row, so an unbounded blob would let one request write any number.
+   */
+  public static final int MAXIMUM_CONTENT_LENGTH = 64 * 1024;
+
   @Id
   @Column(name = "user_id", nullable = false)
   private UUID userId;

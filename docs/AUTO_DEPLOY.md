@@ -29,6 +29,10 @@ keeps them out of the build context as well. The Postgres password comes from
 `.env` (`POSTGRES_PASSWORD`), not from the public compose file. Use URL-safe
 characters only: it is also spliced into the predictor's `DATABASE_URL`.
 
+The containers sit on two networks: `data` (Postgres, api, predictor) and
+`edge` (proxy, panel, api), so the public-facing proxy and panel cannot reach
+the database or the predictor at all.
+
 Postgres, api and predictor bind to `127.0.0.1`. Docker's port rules bypass
 `ufw`, so a bare `"5432:5432"` publishes the database to the internet; only the
 nginx proxy listens publicly.
@@ -44,7 +48,9 @@ the server-only state that `.gitignore` keeps out of git:
   docker-compose.yml           tracked
   proxy/default.conf           tracked
   deploy/insulink-update.*     tracked
-  .env                         POSTGRES_PASSWORD, CLAUDE_CODE_OAUTH_TOKEN
+  .env                         POSTGRES_PASSWORD, CLAUDE_CODE_OAUTH_TOKEN,
+                               optional PREDICTOR_DB_USER/PREDICTOR_DB_PASSWORD
+                               and PREDICTOR_ADMIN_TOKEN (docs/DATABASE_ROLES.md)
   api/configurations/          config.ini
   api/geo/                     GeoLite2-City.mmdb
   predictor/artifacts/         the trained per-user models
