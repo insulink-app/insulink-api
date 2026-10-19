@@ -67,5 +67,6 @@ exists on its next daily run.
 | 1005 | sign-up, password change | new password shorter than 10 characters |
 | 1000 | password change, key change, delete | wrong current password |
 | 1001 | password change, key change | `key` is not a JSON object of at most 4 KB |
+| 1006 | password change | the account holds a wrapped key and the request brings no re-wrapped one |
 | 1000 | key find | the account has no key yet |
 | 1603 | meal estimate | the day's 30 estimates are used up |

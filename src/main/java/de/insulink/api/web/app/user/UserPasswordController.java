@@ -45,9 +45,12 @@ public final class UserPasswordController extends AppRestController {
 
   /**
    * 1000 for a wrong current password, 1001 for a malformed {@code key}, 1005
-   * for a new password below the minimum length. The optional {@code key} is
-   * the data key wrapped for the new password; it is stored with the change,
-   * so the key and the password never disagree.
+   * for a new password below the minimum length, 1006 when the account holds a
+   * wrapped key and the request brings none. The {@code key} is the data key
+   * wrapped for the new password; it is stored with the change, so the key and
+   * the password never disagree. A change without it would leave the key
+   * wrapped for a password nobody knows any more, and with it the pod keys a
+   * reinstalled app needs.
    */
   @AppEndpoint
   @RequestMapping(path = "/user/password/change/", method = RequestMethod.POST)
@@ -67,14 +70,19 @@ public final class UserPasswordController extends AppRestController {
     }
     var change = new PasswordChange(body.getString("password"), newPassword,
       key, findSessionId(request));
-    return findUser(request).thenCompose(user -> changeUserPassword(user, change));
+    return findUser(request).thenCompose(user -> keyRepository
+      .existsById(findUserId(request))
+      .thenCompose(hasKey -> changeUserPassword(user, change, hasKey)));
   }
 
   private CompletableFuture<ApiResponse> changeUserPassword(
-    User user, PasswordChange change
+    User user, PasswordChange change, boolean hasKey
   ) {
     if (user == null || !hashing.matches(change.currentPassword(), user.password())) {
       return ApiResponse.error(1000).future();
+    }
+    if (hasKey && change.key() == null) {
+      return ApiResponse.error(1006).future();
     }
     user.changePassword(hashing.hash(change.newPassword()));
     return userRepository().save(user)

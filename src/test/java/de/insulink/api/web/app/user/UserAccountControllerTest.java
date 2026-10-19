@@ -90,6 +90,8 @@ final class UserAccountControllerTest {
     Mockito.when(keyRepository.save(Mockito.any()))
       .thenAnswer(invocation -> CompletableFuture
         .completedFuture(invocation.getArgument(0)));
+    Mockito.when(keyRepository.existsById(USER_ID))
+      .thenReturn(CompletableFuture.completedFuture(false));
   }
 
   private UserSession openSession(UUID sessionId) {
@@ -189,7 +191,21 @@ final class UserAccountControllerTest {
     changePassword(new JSONObject().put("password", "wrong")
         .put("new_password", "a brand new password").put("key", "{}"))
       .andExpect(jsonPath("$.error.code").value(1000));
-    Mockito.verifyNoInteractions(keyRepository);
+    Mockito.verify(keyRepository, Mockito.never()).save(Mockito.any());
+  }
+
+  /**
+   * The stored key is wrapped for the old password; changing it without the
+   * re-wrapped key would strand the pod keys a reinstalled app needs.
+   */
+  @Test
+  void anAccountWithAKeyCannotChangeThePasswordWithoutTheRewrappedKey()
+    throws Exception {
+    Mockito.when(keyRepository.existsById(USER_ID))
+      .thenReturn(CompletableFuture.completedFuture(true));
+    changePassword(CURRENT_PASSWORD, "a brand new password")
+      .andExpect(jsonPath("$.error.code").value(1006));
+    Mockito.verify(userRepository, Mockito.never()).save(Mockito.any());
   }
 
   @Test
