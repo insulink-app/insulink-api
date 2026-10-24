@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
- * The CLI must run without tools, so text in a photo cannot make it read the
+ * The CLI may only search the web, so text in a photo cannot make it read the
  * container's secrets; the photo goes over stdin, never on the command line.
  */
 final class MealEstimatePromptTest {
@@ -16,10 +16,11 @@ final class MealEstimatePromptTest {
   }
 
   @Test
-  void theCliRunsWithoutToolsOrSettings() {
+  void theCliRunsWithWebSearchOnlyAndNoSettings() {
     var command = prompt("de").command();
-    var tools = command.indexOf("--tools");
-    Assertions.assertEquals("", command.get(tools + 1));
+    Assertions.assertEquals("WebSearch", command.get(command.indexOf("--tools") + 1));
+    Assertions.assertEquals("WebSearch",
+      command.get(command.indexOf("--allowedTools") + 1));
     Assertions.assertTrue(command.contains("--strict-mcp-config"));
     Assertions.assertTrue(command.contains("--no-session-persistence"));
   }

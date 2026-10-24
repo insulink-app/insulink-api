@@ -25,7 +25,8 @@ import java.util.concurrent.TimeUnit;
  */
 @RequiredArgsConstructor(staticName = "create")
 public final class MealPhotoEstimator {
-  private static final long TIMEOUT_SECONDS = 60;
+  /** Room for a product lookup on the web; matches the request timeout. */
+  private static final long TIMEOUT_SECONDS = 120;
   private static final File WORKING_DIRECTORY =
     new File(System.getProperty("java.io.tmpdir"));
 
