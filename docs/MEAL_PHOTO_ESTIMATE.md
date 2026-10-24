@@ -10,7 +10,7 @@ the plate; the totals are their sums), and the `photo_id` of the stored photo.
 ```
 
 Errors: `1600` the image is not a JPEG of at most 2 MB, `1601` no estimate came
-back (CLI missing, token expired, usage limit, timeout after 60 s).
+back (CLI missing, token expired, usage limit, timeout after 120 s).
 
 The estimate is a starting point. The app puts the carbohydrates into the bolus
 calculator's editable carbs field, where the user checks them before the dose is
@@ -23,13 +23,18 @@ photo, one run at a time:
 
 ```
 claude -p --input-format stream-json --output-format stream-json --verbose \
-  --tools "" --strict-mcp-config --setting-sources "" --no-session-persistence \
-  --model opus --json-schema <schema> --system-prompt <prompt>
+  --tools WebSearch --allowedTools WebSearch --strict-mcp-config --setting-sources "" --no-session-persistence \
+  --model opus --fallback-model sonnet --json-schema <schema> \
+  --system-prompt <prompt>
 ```
 
 - The photo goes in as a base64 image block over **stdin**, never as a file.
-- **No tools at all.** A photo can carry text; a prompt injected that way has
-  nothing to call, so it cannot read `config.ini` or reach the network.
+- **Web search is the only tool.** A photo can carry text; a prompt injected
+  that way has no file, shell or fetch tool, so it cannot read `config.ini`.
+  The search runs on Anthropic's side and only sees what is already in the
+  conversation (the photo and the prompt), so it reaches no server secret. The
+  worst an injected search can do is waste a query or skew the numbers, which
+  the user checks in the bolus calculator anyway.
 - `--json-schema` makes the CLI validate the answer; `MealEstimateReply` reads
   `structured_output` from the final `result` line.
 
@@ -63,9 +68,26 @@ counted foods, so a miscount is one tap instead of a new photo. Items stored
 before the count existed read as 0.
 
 The model is Opus, not Sonnet: it counts pieces on a photo noticeably better,
-at the price of a slower run and more of the subscription's usage.
+at the price of a slower run and more of the subscription's usage. Sonnet is
+only the fallback when Opus is overloaded. The reasoning effort stays at the
+CLI default: lowering it would be faster, but whether counting suffers is only
+visible on real photos, so it waits for a measurement.
 
-A run takes about 5 to 20 seconds.
+## Product lookup
+
+When the photo shows a branded, packaged product the model can name, and the
+packaging in the photo does not already show its net weight and nutrition per
+100 g, it runs ONE web search for that exact product (brand, name and size plus
+"nutrition weight" in one query), preferring the manufacturer or Open Food
+Facts. One query instead of several, and none when the label is readable, is
+what keeps the lookup's cost to one search round. Found values beat its memory; values printed on the packaging in the
+photo still beat both. Unbranded food is never looked up. That exists because
+piece weights from memory drift (a bar, a pack of biscuits), and a wrong piece
+weight multiplies through every counted piece.
+
+A run takes about 5 to 20 seconds, 30 to 60 with a lookup. Every timeout on the
+way is sized for that: the CLI is killed after 120 s, Spring's async request
+timeout is 150 s, nginx reads for 150 s, and the app waits 160 s.
 
 ## Storage
 
