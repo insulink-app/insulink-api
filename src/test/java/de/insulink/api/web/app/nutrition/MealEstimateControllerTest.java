@@ -2,6 +2,8 @@ package de.insulink.api.web.app.nutrition;
 
 import de.insulink.api.nutrition.estimate.MealEstimate;
 import de.insulink.api.nutrition.estimate.MealEstimateItem;
+import de.insulink.api.nutrition.estimate.MealEstimateProgress;
+import de.insulink.api.nutrition.estimate.MealEstimateStep;
 import de.insulink.api.nutrition.estimate.MealPhoto;
 import de.insulink.api.nutrition.estimate.MealPhotoEstimator;
 import de.insulink.api.nutrition.estimate.MealPhotoRepository;
@@ -23,9 +25,11 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,6 +53,8 @@ final class MealEstimateControllerTest {
   private MealPhotoEstimator estimator;
   @MockitoBean
   private MealPhotoRepository mealPhotoRepository;
+  @MockitoBean
+  private MealEstimateProgress progress;
 
   @BeforeEach
   void stubStorage() {
@@ -66,7 +72,7 @@ final class MealEstimateControllerTest {
   }
 
   private void estimatorAnswers(CompletableFuture<MealEstimate> answer) {
-    Mockito.when(estimator.estimate(Mockito.any(), Mockito.any())).thenReturn(answer);
+    Mockito.when(estimator.estimate(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(answer);
   }
 
   private ResultActions send(byte[] image) throws Exception {
@@ -116,5 +122,25 @@ final class MealEstimateControllerTest {
     estimatorAnswers(CompletableFuture.failedFuture(new IllegalStateException()));
     send(JPEG).andExpect(jsonPath("$.error.code").value(1601));
     Mockito.verify(mealPhotoRepository, Mockito.never()).save(Mockito.any());
+  }
+
+  /** The app polls this while it waits, so the step has to outlive no run. */
+  @Test
+  void aRunReportsItsFirstStepAndFinishesItsProgress() throws Exception {
+    estimatorAnswers(CompletableFuture.failedFuture(new IllegalStateException()));
+    send(JPEG);
+    Mockito.verify(progress).report(Mockito.eq(USER_ID), Mockito.any());
+    Mockito.verify(progress).finish(USER_ID);
+  }
+
+  @Test
+  void theProgressAnswersTheCurrentStep() throws Exception {
+    Mockito.when(progress.current(USER_ID)).thenReturn(Optional.of(
+      MealEstimateStep.create("searching", "Kinder Country nutrition")));
+    mockMvc.perform(get("/nutrition/estimate/progress/")
+        .header("Authorization", TestAuthentication.bearer(USER_ID)))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.step").value("searching"))
+      .andExpect(jsonPath("$.detail").value("Kinder Country nutrition"));
   }
 }

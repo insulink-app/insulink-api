@@ -9,4 +9,9 @@ public class MealEstimateModule {
   public MealPhotoEstimator mealPhotoEstimator() {
     return MealPhotoEstimator.create();
   }
+
+  @Bean
+  public MealEstimateProgress mealEstimateProgress() {
+    return new MealEstimateProgress();
+  }
 }
