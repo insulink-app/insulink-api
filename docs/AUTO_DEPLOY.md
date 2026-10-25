@@ -8,7 +8,9 @@ A merge to `main` reaches the server by itself, within about five minutes:
    `insulink-predictor`.
 2. On the server a systemd timer (`deploy/insulink-update.timer`) runs every
    five minutes: `git pull --ff-only` of this repo (so compose and proxy changes
-   arrive too), `docker compose pull api panel predictor proxy`,
+   arrive too), `docker compose pull` for api, panel, predictor and proxy one
+   after the other (in parallel, two images sharing a layer race in
+   containerd and the pull fails),
    `docker compose up -d`, then `nginx -s reload` in the proxy. Compose only
    restarts a container whose image or configuration changed.
 
