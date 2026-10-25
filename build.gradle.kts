@@ -2,10 +2,20 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.net.URI
 import java.util.zip.GZIPInputStream
 
+// commons-compress (reads the GeoLite2 archive at build time) still pulls the
+// commons-lang3 3.16.0 with uncontrolled recursion on long inputs.
+buildscript {
+  dependencies {
+    constraints {
+      classpath("org.apache.commons:commons-lang3:3.20.0")
+    }
+  }
+}
+
 plugins {
   id("java")
   id("jacoco")
-  id("org.springframework.boot") version "4.1.1"
+  id("org.springframework.boot") version "4.1.2"
   id("io.freefair.lombok") version "9.8.2"
 }
 
@@ -22,9 +32,9 @@ dependencies {
   testImplementation(platform("org.junit:junit-bom:6.1.3"))
   testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
-  testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.1")
+  testImplementation("org.springframework.boot:spring-boot-starter-test:4.1.2")
   // Boot 4 moved the @WebMvcTest slice out of the starter into its own module.
-  testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.1")
+  testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.2")
 
   implementation("com.google.guava:guava:33.7.2-jre")
 
@@ -43,10 +53,10 @@ dependencies {
   implementation("org.hibernate.orm:hibernate-core:7.4.13.Final")
   implementation("org.reflections:reflections:0.10.2")
 
-  implementation("org.springframework.boot:spring-boot-starter-web:4.1.1")
+  implementation("org.springframework.boot:spring-boot-starter-web:4.1.2")
   implementation("org.springframework:spring-core:7.0.9")
   implementation("org.springframework.data:spring-data-jpa:4.1.1")
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.1")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.2")
   implementation("com.h2database:h2:2.5.252")
 
   implementation("de.mkammerer:argon2-jvm:2.12")
@@ -56,6 +66,9 @@ dependencies {
   implementation("com.nimbusds:nimbus-jose-jwt:10.10")
 
   implementation("com.maxmind.geoip2:geoip2:5.2.0")
+  // geoip2 brings Jackson 2.22.1 (DoS in parser and databind); pinned until a
+  // geoip2 release carries a fixed one.
+  implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
 
   implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20261011.1")
 }
