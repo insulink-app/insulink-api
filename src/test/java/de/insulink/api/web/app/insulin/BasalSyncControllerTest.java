@@ -1,5 +1,6 @@
 package de.insulink.api.web.app.insulin;
 
+import de.insulink.api.insulin.InsulinType;
 import de.insulink.api.insulin.basal.BasalEntry;
 import de.insulink.api.insulin.basal.BasalRepository;
 import de.insulink.api.user.UserRepository;
@@ -15,10 +16,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -116,5 +119,17 @@ final class BasalSyncControllerTest {
     var saved = ArgumentCaptor.forClass(BasalEntry.class);
     Mockito.verify(basalRepository).save(saved.capture());
     assertEquals(USER_ID, saved.getValue().userId());
+  }
+
+  @Test
+  void findReturnsStoredWindowsInTheSyncShape() throws Exception {
+    Mockito.when(basalRepository.findByUserIdOrderByRecordedAt(USER_ID))
+      .thenReturn(CompletableFuture.completedFuture(List.of(BasalEntry.create(
+        UUID.randomUUID(), USER_ID, 0f, 0.25f, InsulinType.FAST_ACTING, 1700000000000L))));
+    endpoint.call(get("/insulin/basal/find/")
+        .header("Authorization", TestAuthentication.bearer(USER_ID)))
+      .andExpect(jsonPath("$.success").value(true))
+      .andExpect(jsonPath("$.deliveries[0].at").value(1700000000000L))
+      .andExpect(jsonPath("$.deliveries[0].units").value(0.25));
   }
 }

@@ -34,6 +34,10 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>Boluses do not come through here — they arrive as meal records. Accepting them
  * twice would have the model count every dose twice.
+ *
+ * <p>{@code find} returns every stored window, oldest first, in the shape
+ * {@code sync} takes, so the app can rebuild the pump's basal history after a
+ * reinstall.
  */
 @RestController
 public final class BasalSyncController extends AppRestController {
@@ -52,6 +56,18 @@ public final class BasalSyncController extends AppRestController {
   ) {
     super(authenticationKey, userRepository);
     this.basalRepository = basalRepository;
+  }
+
+  @AppEndpoint
+  @RequestMapping(path = "/insulin/basal/find/", method = RequestMethod.GET)
+  public CompletableFuture<ApiResponse> findBasal(HttpServletRequest request) {
+    return basalRepository.findByUserIdOrderByRecordedAt(findUserId(request))
+      .thenApply(entries -> entries.stream().map(this::information).toList())
+      .thenApply(entries -> ApiResponse.success(Map.of("deliveries", entries)));
+  }
+
+  private Map<String, Object> information(BasalEntry entry) {
+    return Map.of("at", entry.recordedAt(), "units", entry.insulin());
   }
 
   @AppEndpoint
