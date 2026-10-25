@@ -1,8 +1,12 @@
 # Pulls the latest compose file and images and restarts what changed. The
 # nginx reload picks up a changed proxy/default.conf and renewed certificates,
 # neither of which recreates the container; a broken config is refused and
-# the old one keeps serving. Postgres is never pulled: postgres:latest could
-# jump a major version, which a data directory cannot follow.
+# the old one keeps serving. One pull per image: compose pulls them in
+# parallel, and two images sharing a layer (panel and proxy are both nginx)
+# race in containerd ("failed commit on ref ... rename ... no such file"),
+# which failed every run until the next lucky one. Postgres is never pulled:
+# postgres:latest could jump a major version, which a data directory cannot
+# follow.
 # Copy to /etc/systemd/system/ together with insulink-update.timer
 # (docs/AUTO_DEPLOY.md). WorkingDirectory is the server's deploy folder.
 [Unit]
@@ -17,7 +21,10 @@ Type=oneshot
 User=insulink
 WorkingDirectory=/home/insulink/deploy
 ExecStart=git pull --ff-only
-ExecStart=docker compose pull api panel predictor proxy
+ExecStart=docker compose pull api
+ExecStart=docker compose pull panel
+ExecStart=docker compose pull predictor
+ExecStart=docker compose pull proxy
 ExecStart=docker compose up -d
 ExecStart=docker compose exec -T proxy nginx -s reload
 ExecStart=docker image prune -f
