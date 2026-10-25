@@ -2,6 +2,8 @@ package de.insulink.api.web.app.nutrition;
 
 import de.insulink.api.nutrition.estimate.MealEstimate;
 import de.insulink.api.nutrition.estimate.MealImage;
+import de.insulink.api.nutrition.estimate.MealEstimateProgress;
+import de.insulink.api.nutrition.estimate.MealEstimateStep;
 import de.insulink.api.nutrition.estimate.MealPhoto;
 import de.insulink.api.nutrition.estimate.MealPhotoEstimator;
 import de.insulink.api.nutrition.estimate.MealPhotoRepository;
@@ -38,15 +40,17 @@ public final class MealEstimateController extends AppRestController {
 
   private final MealPhotoEstimator estimator;
   private final MealPhotoRepository mealPhotoRepository;
+  private final MealEstimateProgress progress;
 
   private MealEstimateController(
     @Qualifier("authenticationKey") Key authenticationKey,
     UserRepository userRepository, MealPhotoEstimator estimator,
-    MealPhotoRepository mealPhotoRepository
+    MealPhotoRepository mealPhotoRepository, MealEstimateProgress progress
   ) {
     super(authenticationKey, userRepository);
     this.estimator = estimator;
     this.mealPhotoRepository = mealPhotoRepository;
+    this.progress = progress;
   }
 
   /**
@@ -79,10 +83,24 @@ public final class MealEstimateController extends AppRestController {
         estimateMeal(userId, image, body.getString("language", 2)));
   }
 
+  /**
+   * The step the user's running estimate is at ({@code step}, {@code detail}),
+   * polled by the app while it waits; no step when none runs.
+   */
+  @AppEndpoint
+  @RequestMapping(path = "/nutrition/estimate/progress/", method = RequestMethod.GET)
+  public ApiResponse estimateProgress(HttpServletRequest request) {
+    return ApiResponse.success(progress.current(findUserId(request))
+      .map(MealEstimateStep::information).orElse(Map.of()));
+  }
+
   private CompletableFuture<ApiResponse> estimateMeal(
     UUID userId, MealImage image, String language
   ) {
-    return estimator.estimate(image, language)
+    progress.report(userId, MealEstimateStep.looking());
+    return estimator.estimate(image, language,
+        step -> progress.report(userId, step))
+      .whenComplete((estimate, failure) -> progress.finish(userId))
       .thenCompose(estimate -> keep(userId, image, estimate))
       .thenApply(this::estimateResponse)
       .exceptionally(this::estimateFailed);

@@ -129,7 +129,8 @@ public final class MealEstimatePrompt {
   /** The CLI invocation; arguments only, no shell, so nothing is interpolated. */
   public List<String> command() {
     return List.of("claude", "-p", "--input-format", "stream-json",
-      "--output-format", "stream-json", "--verbose", "--tools", WEB_SEARCH,
+      "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+      "--tools", WEB_SEARCH,
       "--allowedTools", WEB_SEARCH,
       "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence",
       "--model", MODEL, "--fallback-model", FALLBACK_MODEL,

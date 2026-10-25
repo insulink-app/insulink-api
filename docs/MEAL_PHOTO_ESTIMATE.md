@@ -23,6 +23,7 @@ photo, one run at a time:
 
 ```
 claude -p --input-format stream-json --output-format stream-json --verbose \
+  --include-partial-messages \
   --tools WebSearch --allowedTools WebSearch --strict-mcp-config --setting-sources "" --no-session-persistence \
   --model opus --fallback-model sonnet --json-schema <schema> \
   --system-prompt <prompt>
@@ -88,6 +89,24 @@ weight multiplies through every counted piece.
 A run takes about 5 to 20 seconds, 30 to 60 with a lookup. Every timeout on the
 way is sized for that: the CLI is killed after 120 s, Spring's async request
 timeout is 150 s, nginx reads for 150 s, and the app waits 160 s.
+
+## Progress
+
+`GET /v1/nutrition/estimate/progress/` answers the step the user's running
+estimate is at, for the app to poll while it shows "Analysing":
+
+```json
+{ "success": true, "step": "searching", "detail": "Kinder Country 23.5 g nutrition" }
+```
+
+`step` is `looking` (from the start), `searching` (a web search, the query as
+`detail`) or `estimating` (one food, its name as `detail`). No step once the run
+is over. `MealEstimateStream` reads them off the CLI's stdout line by line:
+the search from the complete assistant message, the foods from the answer's
+JSON pieces (`--include-partial-messages`), each once its name is fully
+written. The model works the same as before, so this costs no tokens and no
+time. Its thinking is not shown: English only, long, and unsettling next to a
+dose. The steps live in memory (`MealEstimateProgress`), one api instance.
 
 ## Storage
 
