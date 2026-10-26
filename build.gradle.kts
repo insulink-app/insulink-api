@@ -7,7 +7,7 @@ import java.util.zip.GZIPInputStream
 buildscript {
   dependencies {
     constraints {
-      classpath("org.apache.commons:commons-lang3:3.20.0")
+      classpath("org.apache.commons:commons-lang3:3.21.0")
     }
   }
 }
