@@ -3,6 +3,8 @@ package de.insulink.api.web.app.nutrition;
 import de.insulink.api.nutrition.estimate.MealEstimate;
 import de.insulink.api.nutrition.estimate.MealEstimateItem;
 import de.insulink.api.nutrition.estimate.MealEstimateProgress;
+import de.insulink.api.nutrition.estimate.MealEstimateRun;
+import de.insulink.api.nutrition.estimate.MealEstimateRuns;
 import de.insulink.api.nutrition.estimate.MealEstimateStep;
 import de.insulink.api.nutrition.estimate.MealPhoto;
 import de.insulink.api.nutrition.estimate.MealPhotoEstimator;
@@ -55,6 +57,9 @@ final class MealEstimateControllerTest {
   private MealPhotoRepository mealPhotoRepository;
   @MockitoBean
   private MealEstimateProgress progress;
+  @MockitoBean
+  private MealEstimateRuns runs;
+  private final MealEstimateRun run = MealEstimateRun.create("run");
 
   @BeforeEach
   void stubStorage() {
@@ -63,6 +68,7 @@ final class MealEstimateControllerTest {
     Mockito.when(mealPhotoRepository.save(Mockito.any()))
       .thenAnswer(call -> CompletableFuture.completedFuture(call.getArgument(0)));
     estimatesToday(0L);
+    Mockito.when(runs.open(Mockito.eq(USER_ID), Mockito.any())).thenReturn(run);
   }
 
   private void estimatesToday(long count) {
@@ -72,7 +78,7 @@ final class MealEstimateControllerTest {
   }
 
   private void estimatorAnswers(CompletableFuture<MealEstimate> answer) {
-    Mockito.when(estimator.estimate(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(answer);
+    Mockito.when(estimator.estimate(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(answer);
   }
 
   private ResultActions send(byte[] image) throws Exception {
@@ -122,6 +128,15 @@ final class MealEstimateControllerTest {
     estimatorAnswers(CompletableFuture.failedFuture(new IllegalStateException()));
     send(JPEG).andExpect(jsonPath("$.error.code").value(1601));
     Mockito.verify(mealPhotoRepository, Mockito.never()).save(Mockito.any());
+  }
+
+  /** The app has moved on; a run it called off is no failure. */
+  @Test
+  void aCancelledRunAnswersCancelledAndIsForgotten() throws Exception {
+    run.cancel();
+    estimatorAnswers(CompletableFuture.failedFuture(new IllegalStateException()));
+    send(JPEG).andExpect(jsonPath("$.error.code").value(1604));
+    Mockito.verify(runs).close(USER_ID, run);
   }
 
   /** The app polls this while it waits, so the step has to outlive no run. */

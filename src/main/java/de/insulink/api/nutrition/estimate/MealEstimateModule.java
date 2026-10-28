@@ -14,4 +14,9 @@ public class MealEstimateModule {
   public MealEstimateProgress mealEstimateProgress() {
     return new MealEstimateProgress();
   }
+
+  @Bean
+  public MealEstimateRuns mealEstimateRuns() {
+    return new MealEstimateRuns();
+  }
 }
