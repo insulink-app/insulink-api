@@ -6,11 +6,13 @@ estimate of the pictured portion: `name`, `grams`, `carbs`, `fat`, `protein`,
 the plate; the totals are their sums), and the `photo_id` of the stored photo.
 
 ```json
-{ "image": "<base64 JPEG>", "language": "de" }
+{ "image": "<base64 JPEG>", "language": "de", "run_id": "<app-chosen id>" }
 ```
 
 Errors: `1600` the image is not a JPEG of at most 2 MB, `1601` no estimate came
-back (CLI missing, token expired, usage limit, timeout after 120 s).
+back (CLI missing, token expired, usage limit, timeout after 120 s), `1603` the
+day's 30 estimates are used up, `1604` the app called the run off. `run_id` is
+optional; without it the run cannot be cancelled.
 
 The estimate is a starting point. The app puts the carbohydrates into the bolus
 calculator's editable carbs field, where the user checks them before the dose is
@@ -107,6 +109,22 @@ JSON pieces (`--include-partial-messages`), each once its name is fully
 written. The model works the same as before, so this costs no tokens and no
 time. Its thinking is not shown: English only, long, and unsettling next to a
 dose. The steps live in memory (`MealEstimateProgress`), one api instance.
+
+## Cancelling
+
+`POST /v1/nutrition/estimate/cancel/` with `{ "run_id": "<id>" }` calls the
+user's run off. The app sends it when the user takes a new photo or leaves the
+camera while the estimate still runs. Dropping the request alone is not enough:
+the CLI would keep running and spend the subscription's tokens on an answer
+nobody reads. So `MealEstimateRuns` keeps each user's running
+`MealEstimateRun`, and a cancel kills its CLI process (`destroyForcibly`), which
+also ends the model's stream on Anthropic's side. Tokens already used stay used.
+
+- The cancel names its run, so a late one can never kill the next photo's run.
+- A cancel that comes before its run is opened (the upload finished just as the
+  user left) is kept, and the run is cancelled as it opens.
+- A run still queued behind another never starts its process.
+- The cancelled request answers `1604`, logged as no failure, and keeps no photo.
 
 ## Storage
 

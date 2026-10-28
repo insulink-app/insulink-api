@@ -3,6 +3,8 @@ package de.insulink.api.web.app.nutrition;
 import de.insulink.api.nutrition.estimate.MealEstimate;
 import de.insulink.api.nutrition.estimate.MealImage;
 import de.insulink.api.nutrition.estimate.MealEstimateProgress;
+import de.insulink.api.nutrition.estimate.MealEstimateRun;
+import de.insulink.api.nutrition.estimate.MealEstimateRuns;
 import de.insulink.api.nutrition.estimate.MealEstimateStep;
 import de.insulink.api.nutrition.estimate.MealPhoto;
 import de.insulink.api.nutrition.estimate.MealPhotoEstimator;
@@ -41,16 +43,19 @@ public final class MealEstimateController extends AppRestController {
   private final MealPhotoEstimator estimator;
   private final MealPhotoRepository mealPhotoRepository;
   private final MealEstimateProgress progress;
+  private final MealEstimateRuns runs;
 
   private MealEstimateController(
     @Qualifier("authenticationKey") Key authenticationKey,
     UserRepository userRepository, MealPhotoEstimator estimator,
-    MealPhotoRepository mealPhotoRepository, MealEstimateProgress progress
+    MealPhotoRepository mealPhotoRepository, MealEstimateProgress progress,
+    MealEstimateRuns runs
   ) {
     super(authenticationKey, userRepository);
     this.estimator = estimator;
     this.mealPhotoRepository = mealPhotoRepository;
     this.progress = progress;
+    this.runs = runs;
   }
 
   /**
@@ -62,7 +67,8 @@ public final class MealEstimateController extends AppRestController {
 
   /**
    * 1600 for a photo that is not a JPEG within the cap, 1601 when no estimate
-   * came, 1603 once the day's estimates are used up.
+   * came, 1603 once the day's estimates are used up, 1604 when the app called
+   * the run off ({@code run_id}, see {@link MealEstimateCancelController}).
    */
   @AppEndpoint
   @RequestMapping(path = "/nutrition/estimate/", method = RequestMethod.POST)
@@ -80,7 +86,13 @@ public final class MealEstimateController extends AppRestController {
     return mealPhotoRepository.countByUserIdAndTakenAtGreaterThan(userId, dayAgo)
       .thenCompose(today -> today >= MAXIMUM_ESTIMATES_PER_DAY ?
         ApiResponse.error(1603, "daily limit reached").future() :
-        estimateMeal(userId, image, body.getString("language", 2)));
+        estimateMeal(userId, image, body.getString("language", 2),
+          runId(body)));
+  }
+
+  /** The app's id for this run; empty from an app too old to cancel one. */
+  private String runId(ApiRequestBody body) {
+    return body.has("run_id") ? body.getString("run_id", 64) : "";
   }
 
   /**
@@ -95,23 +107,33 @@ public final class MealEstimateController extends AppRestController {
   }
 
   private CompletableFuture<ApiResponse> estimateMeal(
-    UUID userId, MealImage image, String language
+    UUID userId, MealImage image, String language, String runId
   ) {
     progress.report(userId, MealEstimateStep.looking());
-    return estimator.estimate(image, language,
+    var run = runs.open(userId, runId);
+    return estimator.estimate(image, language, run,
         step -> progress.report(userId, step))
-      .whenComplete((estimate, failure) -> progress.finish(userId))
+      .whenComplete((estimate, failure) -> finish(userId, run))
       .thenCompose(estimate -> keep(userId, image, estimate))
       .thenApply(this::estimateResponse)
-      .exceptionally(this::estimateFailed);
+      .exceptionally(failure -> estimateFailed(run, failure));
+  }
+
+  private void finish(UUID userId, MealEstimateRun run) {
+    progress.finish(userId);
+    runs.close(userId, run);
   }
 
   /**
    * Logs why there is no estimate (the CLI's answer, or the database refusing
    * the photo) and answers 1601. The app can only say that it failed, so the
-   * reason has to be in the server log.
+   * reason has to be in the server log. A run the app called off is no failure
+   * and answers 1604, to an app that no longer listens.
    */
-  private ApiResponse estimateFailed(Throwable failure) {
+  private ApiResponse estimateFailed(MealEstimateRun run, Throwable failure) {
+    if (run.cancelled()) {
+      return ApiResponse.error(1604, "estimate cancelled");
+    }
     LOGGER.error("Meal photo estimate failed", failure);
     return ApiResponse.error(1601, "estimate unavailable");
   }

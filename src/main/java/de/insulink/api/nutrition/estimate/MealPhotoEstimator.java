@@ -43,15 +43,17 @@ public final class MealPhotoEstimator {
    * The estimate, or a failed future when the CLI gave none in time or the
    * queue is full. A full queue answers at once instead of piling up photos in
    * memory that would each wait minutes. Each step the CLI reaches goes to
-   * {@code onStep} while it runs.
+   * {@code onStep} while it runs. Cancelling {@code run} kills the CLI, or keeps
+   * a queued photo from starting, and fails the future.
    */
   public CompletableFuture<MealEstimate> estimate(
-    MealImage image, String language, Consumer<MealEstimateStep> onStep
+    MealImage image, String language, MealEstimateRun run,
+    Consumer<MealEstimateStep> onStep
   ) {
     var prompt = MealEstimatePrompt.create(image, language);
     var stream = MealEstimateStream.create(onStep);
     try {
-      return CompletableFuture.supplyAsync(() -> run(prompt, stream), queue)
+      return CompletableFuture.supplyAsync(() -> run(prompt, stream, run), queue)
         .thenApply(this::parse);
     } catch (RejectedExecutionException exception) {
       return CompletableFuture.failedFuture(exception);
@@ -72,12 +74,13 @@ public final class MealPhotoEstimator {
    * the timeout is killed, which closes the pipe and ends the read with
    * whatever came so far.
    */
-  private String run(MealEstimatePrompt prompt, MealEstimateStream stream) {
+  private String run(
+    MealEstimatePrompt prompt, MealEstimateStream stream, MealEstimateRun run
+  ) {
     try {
-      var process = new ProcessBuilder(prompt.command())
+      var process = run.start(new ProcessBuilder(prompt.command())
         .directory(WORKING_DIRECTORY)
-        .redirectError(ProcessBuilder.Redirect.DISCARD)
-        .start();
+        .redirectError(ProcessBuilder.Redirect.DISCARD));
       CompletableFuture.delayedExecutor(TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .execute(process::destroyForcibly);
       writeStdin(process, prompt.stdinLine());
