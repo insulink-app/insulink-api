@@ -20,9 +20,10 @@ as a PWA). Links are managed from the app and the panel.
   involved. Anyone holding the link sees the glucose until it is deleted.
 - **Revocation is a delete.** No flags, no expiry: a deleted row answers 1000
   on the very next poll.
-- **Only glucose.** The public reply carries values and times, not the owner's
-  name, settings or thresholds. The page colours against the fixed 70 to 180
-  range for that reason.
+- **Glucose plus a greeting.** The public reply carries values and times, the
+  link's name and the owner's account name (for "Hello Mum, Lukas's glucose").
+  No settings or thresholds, so the page colours against the fixed 70 to 180
+  range. The account name is also the sign-in name, so a link holder learns it.
 - **24 h window.** Enough for a follower's chart, and it bounds what a leaked
   link exposes.
 - **Account deletion** needs nothing extra: `AccountEraser` finds

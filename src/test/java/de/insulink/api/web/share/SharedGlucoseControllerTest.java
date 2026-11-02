@@ -4,6 +4,8 @@ import de.insulink.api.glucose.GlucoseEntry;
 import de.insulink.api.glucose.GlucoseRepository;
 import de.insulink.api.glucose.share.GlucoseShare;
 import de.insulink.api.glucose.share.GlucoseShareRepository;
+import de.insulink.api.user.User;
+import de.insulink.api.user.UserRepository;
 import de.insulink.api.web.AppControllerTest;
 import de.insulink.api.web.AsyncEndpoint;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,8 @@ final class SharedGlucoseControllerTest {
   private GlucoseShareRepository shareRepository;
   @MockitoBean
   private GlucoseRepository glucoseRepository;
+  @MockitoBean
+  private UserRepository userRepository;
 
   private AsyncEndpoint endpoint;
 
@@ -51,6 +55,9 @@ final class SharedGlucoseControllerTest {
     Mockito.when(shareRepository.findById(SHARE_ID))
       .thenReturn(CompletableFuture.completedFuture(Optional.of(
         GlucoseShare.create(SHARE_ID, OWNER_ID, "Mum", 1L))));
+    Mockito.when(userRepository.findById(OWNER_ID))
+      .thenReturn(CompletableFuture.completedFuture(Optional.of(
+        User.create(OWNER_ID, "Lukas", "hash", "de", true, 0L))));
     Mockito.when(glucoseRepository
         .findByUserIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(
           Mockito.eq(OWNER_ID), Mockito.anyLong()))
@@ -59,6 +66,8 @@ final class SharedGlucoseControllerTest {
 
     endpoint.call(get("/share/" + SHARE_ID + "/"))
       .andExpect(jsonPath("$.success").value(true))
+      .andExpect(jsonPath("$.name").value("Mum"))
+      .andExpect(jsonPath("$.owner").value("Lukas"))
       .andExpect(jsonPath("$.entries[0].value").value(123.0))
       .andExpect(jsonPath("$.entries[0].time").value(1_700_000_000_000L));
   }
