@@ -12,4 +12,9 @@ import java.util.concurrent.CompletableFuture;
 public interface GlucoseRepository extends DatabaseRepository<GlucoseEntry, UUID> {
   @Async
   CompletableFuture<List<GlucoseEntry>> findByUserId(UUID userId);
+
+  @Async
+  CompletableFuture<List<GlucoseEntry>> findByUserIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(
+    UUID userId, long recordedAt
+  );
 }
