@@ -51,8 +51,8 @@ final class MealControllerTest {
     Mockito.when(mealRepository.save(Mockito.any()))
       .thenAnswer(invocation -> CompletableFuture
         .completedFuture(invocation.getArgument(0)));
-    Mockito.when(mealRepository.delete(Mockito.any()))
-      .thenReturn(CompletableFuture.completedFuture(null));
+    Mockito.when(mealRepository.deleteAllOfUser(Mockito.any()))
+      .thenReturn(CompletableFuture.completedFuture(0));
   }
 
   private void sync(String payload) throws Exception {
@@ -108,11 +108,8 @@ final class MealControllerTest {
 
   @Test
   void syncDropsTheMealsTheUserHadBefore() throws Exception {
-    var stale = Meal.create(UUID.randomUUID(), USER_ID, 0L, 1.0, 100, 1.0, "[]");
-    Mockito.when(mealRepository.findByUserIdOrderByTime(USER_ID))
-      .thenReturn(CompletableFuture.completedFuture(List.of(stale)));
     sync("{\"meals\": []}");
-    Mockito.verify(mealRepository).delete(stale);
+    Mockito.verify(mealRepository).deleteAllOfUser(USER_ID);
     Mockito.verify(mealRepository, Mockito.never()).save(Mockito.any());
   }
 }

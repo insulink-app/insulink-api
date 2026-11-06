@@ -66,11 +66,10 @@ final class HealthControllerTest {
     Mockito.when(dayRepository.save(Mockito.any()))
       .thenAnswer(invocation -> CompletableFuture
         .completedFuture(invocation.getArgument(0)));
-    Mockito.when(dayRepository.delete(Mockito.any()))
-      .thenReturn(CompletableFuture.completedFuture(null));
-    Mockito.when(sampleRepository.save(Mockito.any()))
-      .thenAnswer(invocation -> CompletableFuture
-        .completedFuture(invocation.getArgument(0)));
+    Mockito.when(dayRepository.deleteAllOfUser(Mockito.any()))
+      .thenReturn(CompletableFuture.completedFuture(0));
+    Mockito.when(sampleRepository.upsert(Mockito.any()))
+      .thenReturn(CompletableFuture.completedFuture(1));
   }
 
   @Test
@@ -110,15 +109,12 @@ final class HealthControllerTest {
 
   @Test
   void syncingDaysReplacesTheArchiveTheUserHadBefore() throws Exception {
-    var stale = HealthDay.create(UUID.randomUUID(), USER_ID, "2026-07-21", "{}");
-    Mockito.when(dayRepository.findByUserIdOrderByDateKey(USER_ID))
-      .thenReturn(CompletableFuture.completedFuture(List.of(stale)));
     endpoint.call(post("/health/days/sync/")
         .header("Authorization", TestAuthentication.bearer(USER_ID))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"days\": []}"))
       .andExpect(status().isOk());
-    Mockito.verify(dayRepository).delete(stale);
+    Mockito.verify(dayRepository).deleteAllOfUser(USER_ID);
   }
 
   @Test
@@ -142,7 +138,7 @@ final class HealthControllerTest {
                        {"t": 1700000001000, "b": 73}]}"""))
       .andExpect(jsonPath("$.success").value(true));
     var saved = ArgumentCaptor.forClass(PulseSample.class);
-    Mockito.verify(sampleRepository, Mockito.times(2)).save(saved.capture());
+    Mockito.verify(sampleRepository, Mockito.times(2)).upsert(saved.capture());
     Assertions.assertEquals(USER_ID, saved.getAllValues().getFirst().userId());
     Assertions.assertEquals(RECORDED_AT, saved.getAllValues().getFirst().recordedAt());
     Assertions.assertEquals(73, saved.getAllValues().getLast().bpm());

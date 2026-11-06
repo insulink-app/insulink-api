@@ -2,7 +2,7 @@ package de.insulink.api.web.app.health;
 
 import de.insulink.api.health.HealthDay;
 import de.insulink.api.health.HealthDayRepository;
-import de.insulink.api.iterator.AsyncIterator;
+import de.insulink.api.database.UserCollection;
 import de.insulink.api.user.UserRepository;
 import de.insulink.api.web.request.ApiRequestBody;
 import de.insulink.api.web.response.ApiResponse;
@@ -58,10 +58,7 @@ public final class HealthDayController extends AppRestController {
     var userId = findUserId(request);
     var fresh = ApiRequestBody.of(payload, response).getObjectList("days")
       .stream().map(entry -> day(userId, entry)).toList();
-    return dayRepository.findByUserIdOrderByDateKey(userId).thenCompose(existing ->
-      AsyncIterator.execute(existing, dayRepository::delete)
-        .thenCompose(deleted -> AsyncIterator.execute(fresh, dayRepository::save))
-        .thenApply(saved -> ApiResponse.success()));
+    return UserCollection.create(dayRepository).replace(userId, fresh);
   }
 
   private HealthDay day(UUID userId, ApiRequestBody entry) {
