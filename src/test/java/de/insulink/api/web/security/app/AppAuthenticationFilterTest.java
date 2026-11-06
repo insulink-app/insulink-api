@@ -164,6 +164,18 @@ final class AppAuthenticationFilterTest {
     Assertions.assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
   }
 
+  /** A database hiccup is not the session's fault and must not end it. */
+  @Test
+  void aFailedSessionLookupAsksForARetryRatherThanEndingTheSession()
+    throws Exception {
+    Mockito.when(sessionRepository.findById(SESSION_ID))
+      .thenReturn(CompletableFuture.failedFuture(new IllegalStateException()));
+    filter(GUARDED_PATH, TestAuthentication.bearer(USER_ID, SESSION_ID));
+    Assertions.assertEquals(HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+      response.getStatus());
+    Assertions.assertFalse(reachedTheController());
+  }
+
   @Test
   void anUnannotatedPathIsNotGuardedSoLoginStaysReachable() throws Exception {
     filter(OPEN_PATH, null);
