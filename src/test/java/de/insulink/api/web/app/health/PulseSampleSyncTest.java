@@ -29,9 +29,8 @@ final class PulseSampleSyncTest {
   @BeforeEach
   void createSync() {
     sampleRepository = Mockito.mock(PulseSampleRepository.class);
-    Mockito.when(sampleRepository.save(Mockito.any()))
-      .thenAnswer(invocation -> CompletableFuture
-        .completedFuture(invocation.getArgument(0)));
+    Mockito.when(sampleRepository.upsert(Mockito.any()))
+      .thenReturn(CompletableFuture.completedFuture(1));
     sync = PulseSampleSync.create(sampleRepository);
   }
 
@@ -41,7 +40,7 @@ final class PulseSampleSyncTest {
 
   private List<PulseSample> saved() {
     var captor = ArgumentCaptor.forClass(PulseSample.class);
-    Mockito.verify(sampleRepository, Mockito.atLeast(0)).save(captor.capture());
+    Mockito.verify(sampleRepository, Mockito.atLeast(0)).upsert(captor.capture());
     return captor.getAllValues();
   }
 
@@ -56,7 +55,7 @@ final class PulseSampleSyncTest {
   void reSendingTheSameSampleWritesNothing() {
     sync.merge(List.of(sample(UUID.randomUUID(), FIRST_SECOND, 72)),
       List.of(sample(UUID.randomUUID(), FIRST_SECOND, 72))).join();
-    Mockito.verify(sampleRepository, Mockito.never()).save(Mockito.any());
+    Mockito.verify(sampleRepository, Mockito.never()).upsert(Mockito.any());
   }
 
   @Test

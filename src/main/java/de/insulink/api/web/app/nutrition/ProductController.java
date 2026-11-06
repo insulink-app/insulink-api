@@ -1,5 +1,6 @@
 package de.insulink.api.web.app.nutrition;
 
+import de.insulink.api.database.UserCollection;
 import de.insulink.api.nutrition.Product;
 import de.insulink.api.nutrition.ProductRepository;
 import de.insulink.api.user.UserRepository;
@@ -56,9 +57,7 @@ public final class ProductController extends AppRestController {
     var entries = ApiRequestBody.of(payload, response).getObjectList("products");
     var fresh = IntStream.range(0, entries.size())
       .mapToObj(index -> product(userId, entries.get(index), index)).toList();
-    return productRepository.findByUserIdOrderByOrderIndex(userId)
-      .thenCompose(existing ->
-        NutritionCollection.create(productRepository).replace(existing, fresh));
+    return UserCollection.create(productRepository).replace(userId, fresh);
   }
 
   private Product product(UUID userId, ApiRequestBody entry, int index) {

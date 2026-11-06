@@ -79,6 +79,7 @@ public final class MealEstimateController extends AppRestController {
     var body = ApiRequestBody.of(payload, response);
     var image = MealImage.fromBase64(body.getString("image"));
     if (!image.valid()) {
+      LOGGER.warn("Meal photo refused: {} bytes", image.bytes().length);
       return ApiResponse.error(1600, "invalid image").future();
     }
     var userId = findUserId(request);
