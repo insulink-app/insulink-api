@@ -127,6 +127,21 @@ final class SessionControllerTest {
     Assertions.assertTrue(session.status().isClosed());
   }
 
+  /**
+   * The app and its background service refresh at the same moment, and the
+   * later save of the session row drops the token the earlier one handed out.
+   * Whoever holds that token was refreshed seconds ago and must not be logged
+   * out for it.
+   */
+  @Test
+  void aTokenFromTheLatestBurstOfRefreshesIsStillRedeemed() throws Exception {
+    var raced = refreshedToken(currentRefreshToken);
+    session.updateRefreshToken("overwritten by the other caller");
+    session.updateRefreshToken("and its retry");
+    refresh(raced).andExpect(jsonPath("$.success").value(true));
+    Assertions.assertFalse(session.status().isClosed());
+  }
+
   /** A copy of the session table must not hand out a usable session. */
   @Test
   void onlyADigestOfTheIssuedTokenIsStored() throws Exception {

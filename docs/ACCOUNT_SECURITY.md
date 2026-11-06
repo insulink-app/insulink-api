@@ -22,10 +22,16 @@ the 10 minute token runs out. Status codes stay as the clients expect them:
 - Refresh tokens live 90 days; every refresh hands out a new one.
 - Only a SHA-256 digest is stored. Rows from before that still hold the token
   itself and are accepted until their next rotation.
-- The token the current one replaced stays good for one more rotation (lost
-  responses, the app and its service refreshing at once). An older, properly
-  signed token coming back closes the session: it is a stolen copy or one
-  already traded in.
+- The token the current one replaced stays good for one more rotation, and so
+  does any token issued up to 5 minutes before the current one. A burst of
+  refreshes (lost responses retried, the app and its service refreshing at
+  once) hands out several tokens within seconds, and concurrent saves of the
+  session row drop some of them; refusing those logged users out. An older,
+  properly signed token coming back closes the session: it is a stolen copy or
+  one already traded in. Tokens issued before the `iat` claim was added only
+  get the one-rotation rule.
+- A session lookup that fails (database busy or down) answers 503, not 403, so
+  the app retries instead of signing out.
 - A password change closes every other session of the account.
 
 ## Signing in

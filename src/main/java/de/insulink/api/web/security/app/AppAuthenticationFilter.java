@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.security.Key;
 import java.util.UUID;
+import java.util.concurrent.CompletionException;
 
 @Component
 public final class AppAuthenticationFilter extends OncePerRequestFilter {
@@ -66,17 +67,28 @@ public final class AppAuthenticationFilter extends OncePerRequestFilter {
    */
   private int validateApiKey(String apiKey) {
     try {
-      var claims = Jwts.parser()
+      return sessionStatus(Jwts.parser()
         .setSigningKey(authenticationKey)
         .build()
         .parseClaimsJws(apiKey)
-        .getPayload();
-      return isSessionOpen(claims) ? HttpServletResponse.SC_ACCEPTED :
-        HttpServletResponse.SC_FORBIDDEN;
+        .getPayload());
     } catch (ExpiredJwtException exception) {
       return HttpServletResponse.SC_EXPECTATION_FAILED;
-    } catch (Exception exception) {
+    } catch (RuntimeException exception) {
       return HttpServletResponse.SC_FORBIDDEN;
+    }
+  }
+
+  /**
+   * 503 when the session cannot be looked up (database busy or down): the
+   * token itself is fine, and a 403 would log the user out over a hiccup.
+   */
+  private int sessionStatus(Claims claims) {
+    try {
+      return isSessionOpen(claims) ? HttpServletResponse.SC_ACCEPTED :
+        HttpServletResponse.SC_FORBIDDEN;
+    } catch (CompletionException exception) {
+      return HttpServletResponse.SC_SERVICE_UNAVAILABLE;
     }
   }
 

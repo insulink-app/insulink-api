@@ -62,7 +62,7 @@ public class AuthenticationController extends AppRestController {
   protected String generateRefreshToken(UUID userId, UUID sessionId) {
     var expirationDate = new Date(System.currentTimeMillis() +
       MAXIMUM_REFRESH_EXPIRATION_TIME);
-    return Jwts.builder().expiration(expirationDate)
+    return Jwts.builder().issuedAt(new Date()).expiration(expirationDate)
       .claim("id", userId.toString())
       .claim("session", sessionId.toString())
       .signWith(refreshKey)
