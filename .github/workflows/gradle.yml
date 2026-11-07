@@ -120,6 +120,6 @@ jobs:
       # Only submit — the action's default also uploads the graph JSON as a
       # workflow artifact, which is dead weight and eats the storage quota.
       - name: Submit dependency graph
-        uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        uses: gradle/actions/dependency-submission@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
           dependency-graph: generate-and-submit
