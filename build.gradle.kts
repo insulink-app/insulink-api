@@ -36,7 +36,7 @@ dependencies {
   // Boot 4 moved the @WebMvcTest slice out of the starter into its own module.
   testImplementation("org.springframework.boot:spring-boot-webmvc-test:4.1.2")
 
-  implementation("com.google.guava:guava:33.7.2-jre")
+  implementation("com.google.guava:guava:33.8.0-jre")
 
   implementation("org.projectlombok:lombok:1.18.48")
   annotationProcessor("org.projectlombok:lombok:1.18.48")
