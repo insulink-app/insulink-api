@@ -1,5 +1,6 @@
 package de.insulink.api.web.app.nutrition;
 
+import de.insulink.api.database.UserCollection;
 import de.insulink.api.nutrition.Meal;
 import de.insulink.api.nutrition.MealRepository;
 import de.insulink.api.user.UserRepository;
@@ -54,9 +55,7 @@ public final class MealController extends AppRestController {
     var userId = findUserId(request);
     var fresh = ApiRequestBody.of(payload, response).getObjectList("meals")
       .stream().map(entry -> meal(userId, entry)).toList();
-    return mealRepository.findByUserIdOrderByTime(userId)
-      .thenCompose(existing ->
-        NutritionCollection.create(mealRepository).replace(existing, fresh));
+    return UserCollection.create(mealRepository).replace(userId, fresh);
   }
 
   private Meal meal(UUID userId, ApiRequestBody entry) {

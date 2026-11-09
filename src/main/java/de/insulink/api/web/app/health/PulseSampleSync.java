@@ -32,7 +32,7 @@ final class PulseSampleSync {
       .map(sample -> reconcile(existingByTime, sample))
       .filter(Objects::nonNull)
       .toList();
-    return AsyncIterator.execute(changes, sampleRepository::save)
+    return AsyncIterator.execute(changes, sampleRepository::upsert)
       .thenApply(_ -> ApiResponse.success());
   }
 

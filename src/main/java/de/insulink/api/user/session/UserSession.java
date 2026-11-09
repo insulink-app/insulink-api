@@ -10,6 +10,7 @@ import lombok.experimental.Accessors;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Date;
 import java.util.HexFormat;
 import java.util.UUID;
 
@@ -50,15 +51,30 @@ public final class UserSession {
   }
 
   /**
-   * Whether the refresh token may still be redeemed: the current one, or the
-   * one it replaced. The replaced one stays good until the next rotation
-   * because a refresh whose response was lost on a bad connection has already
-   * rotated here, and the app, never having seen the new token, can only
-   * come back with the old one. Refusing it logged the user out.
+   * How long before the latest rotation a token may have been issued and still
+   * be redeemed. A burst of refreshes (the app and its background service at
+   * once, retries after lost responses) hands out several tokens within
+   * seconds, and two saves of this row overwrite each other, so the token a
+   * caller ended up holding is not necessarily the stored one.
    */
-  public boolean acceptsRefreshToken(String refreshToken) {
+  private static final long ROTATION_GRACE_MILLIS = 1000L * 60 * 5;
+
+  /**
+   * Whether the refresh token may still be redeemed: the current one, the one
+   * it replaced, or any issued in the same burst as the current one. Refusing
+   * any of those closed a perfectly good session and logged the user out. A
+   * token from before that burst still counts as a stolen or traded-in copy.
+   */
+  public boolean acceptsRefreshToken(String refreshToken, Date issuedAt) {
     return !status.isClosed() && (matches(lastRefreshToken, refreshToken) ||
-      matches(previousRefreshToken, refreshToken));
+      matches(previousRefreshToken, refreshToken) ||
+      issuedInLatestBurst(issuedAt));
+  }
+
+  /** Tokens from before issue dates were stamped have none and never qualify. */
+  private boolean issuedInLatestBurst(Date issuedAt) {
+    return issuedAt != null &&
+      issuedAt.getTime() >= lastRefreshedAt - ROTATION_GRACE_MILLIS;
   }
 
   /**

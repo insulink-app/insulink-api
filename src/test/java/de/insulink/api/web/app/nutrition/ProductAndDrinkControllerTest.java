@@ -61,10 +61,10 @@ final class ProductAndDrinkControllerTest {
     Mockito.when(drinkRepository.save(Mockito.any()))
       .thenAnswer(invocation -> CompletableFuture
         .completedFuture(invocation.getArgument(0)));
-    Mockito.when(productRepository.delete(Mockito.any()))
-      .thenReturn(CompletableFuture.completedFuture(null));
-    Mockito.when(drinkRepository.delete(Mockito.any()))
-      .thenReturn(CompletableFuture.completedFuture(null));
+    Mockito.when(productRepository.deleteAllOfUser(Mockito.any()))
+      .thenReturn(CompletableFuture.completedFuture(0));
+    Mockito.when(drinkRepository.deleteAllOfUser(Mockito.any()))
+      .thenReturn(CompletableFuture.completedFuture(0));
   }
 
   private Product storedProduct(Double serving, int orderIndex) {
@@ -153,11 +153,8 @@ final class ProductAndDrinkControllerTest {
 
   @Test
   void syncDropsTheProductsTheUserHadBefore() throws Exception {
-    var stale = storedProduct(30.0, 0);
-    Mockito.when(productRepository.findByUserIdOrderByOrderIndex(USER_ID))
-      .thenReturn(CompletableFuture.completedFuture(List.of(stale)));
     syncProducts("{\"products\": []}");
-    Mockito.verify(productRepository).delete(stale);
+    Mockito.verify(productRepository).deleteAllOfUser(USER_ID);
     Mockito.verify(productRepository, Mockito.never()).save(Mockito.any());
   }
 

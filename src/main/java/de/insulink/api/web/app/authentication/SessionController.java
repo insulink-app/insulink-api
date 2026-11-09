@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,32 +49,34 @@ public final class SessionController extends AuthenticationController {
     var sessionId = UUID.fromString(result.get("session", String.class));
     return userRepository().existsById(userId)
       .thenCompose(userExists -> sessionRepository().existsById(sessionId)
-        .thenCompose(sessionExists -> refresh(refreshToken, userId,
-          sessionId, userExists, sessionExists)));
+        .thenCompose(sessionExists -> refresh(refreshToken,
+          result.getIssuedAt(), userId, sessionId, userExists,
+          sessionExists)));
   }
 
   private CompletableFuture<ApiResponse> refresh(
-    String refreshToken, UUID userId, UUID sessionId, boolean userExists,
-    boolean sessionExists
+    String refreshToken, Date issuedAt, UUID userId, UUID sessionId,
+    boolean userExists, boolean sessionExists
   ) {
     if (!userExists || !sessionExists) {
       return ApiResponse.error(1001).future();
     }
     return userRepository().findById(userId)
       .thenCompose(user -> sessionRepository().findById(sessionId)
-        .thenApply(session -> refresh(refreshToken,
+        .thenApply(session -> refresh(refreshToken, issuedAt,
           user.get(), session.get())));
   }
 
   /**
    * A properly signed token the session no longer accepts is an older copy
    * coming back: either a stolen one or one the owner already traded in. Both
-   * mean the session can no longer be trusted, so it is closed.
+   * mean the session can no longer be trusted, so it is closed. What counts as
+   * older is {@link UserSession#acceptsRefreshToken}'s call.
    */
   private ApiResponse refresh(
-    String refreshToken, User user, UserSession session
+    String refreshToken, Date issuedAt, User user, UserSession session
   ) {
-    if (!session.acceptsRefreshToken(refreshToken)) {
+    if (!session.acceptsRefreshToken(refreshToken, issuedAt)) {
       closeSession(session);
       return ApiResponse.error(1002);
     }
