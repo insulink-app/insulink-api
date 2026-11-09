@@ -77,7 +77,7 @@ final class MealControllerTest {
     Mockito.when(mealRepository.findByUserIdOrderByTime(USER_ID))
       .thenReturn(CompletableFuture.completedFuture(List.of(Meal.create(
         UUID.randomUUID(), USER_ID, 1_700_000_000_000L, 62.5, 120, 6.0,
-        "[{\"name\":\"Brot\",\"carbs\":30}]"))));
+        "[{\"name\":\"Brot\",\"carbs\":30}]", false, null))));
     endpoint.call(get("/nutrition/meals/find/")
         .header("Authorization", TestAuthentication.bearer(USER_ID)))
       .andExpect(jsonPath("$.meals[0].time").value(1_700_000_000_000L))
@@ -85,7 +85,34 @@ final class MealControllerTest {
       .andExpect(jsonPath("$.meals[0].glucose").value(120))
       .andExpect(jsonPath("$.meals[0].bolus").value(6.0))
       .andExpect(jsonPath("$.meals[0].entries[0].name").value("Brot"))
-      .andExpect(jsonPath("$.meals[0].entries[0].carbs").value(30));
+      .andExpect(jsonPath("$.meals[0].entries[0].carbs").value(30))
+      .andExpect(jsonPath("$.meals[0].delivered_by_pump").doesNotExist())
+      .andExpect(jsonPath("$.meals[0].split_of").doesNotExist());
+  }
+
+  @Test
+  void findHandsBackThePumpFlagAndTheSplitLink() throws Exception {
+    Mockito.when(mealRepository.findByUserIdOrderByTime(USER_ID))
+      .thenReturn(CompletableFuture.completedFuture(List.of(Meal.create(
+        UUID.randomUUID(), USER_ID, 1_700_000_900_000L, 0, 120, 0.5, "[]",
+        true, 1_700_000_000_000L))));
+    endpoint.call(get("/nutrition/meals/find/")
+        .header("Authorization", TestAuthentication.bearer(USER_ID)))
+      .andExpect(jsonPath("$.meals[0].delivered_by_pump").value(true))
+      .andExpect(jsonPath("$.meals[0].split_of").value(1_700_000_000_000L));
+  }
+
+  @Test
+  void syncStoresThePumpFlagAndTheSplitLink() throws Exception {
+    sync("""
+      {"meals": [
+        {"time": 1700000900000, "carbs": 0, "glucose": 120, "bolus": 0.5,
+         "entries": [], "delivered_by_pump": true, "split_of": 1700000000000}
+      ]}""");
+    var saved = ArgumentCaptor.forClass(Meal.class);
+    Mockito.verify(mealRepository).save(saved.capture());
+    Assertions.assertTrue(saved.getValue().deliveredByPump());
+    Assertions.assertEquals(1_700_000_000_000L, saved.getValue().splitOf());
   }
 
   @Test
@@ -104,6 +131,8 @@ final class MealControllerTest {
     Assertions.assertEquals(120, meal.glucose());
     Assertions.assertEquals(6.0, meal.bolus());
     Assertions.assertTrue(meal.entries().contains("Brot"), meal.entries());
+    Assertions.assertFalse(meal.deliveredByPump());
+    Assertions.assertNull(meal.splitOf());
   }
 
   @Test
