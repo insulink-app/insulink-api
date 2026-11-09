@@ -16,6 +16,12 @@ import java.util.UUID;
  * A logged meal: its carbs, the glucose and bolus it was dosed with, when, and
  * the picked products kept as the app's JSON array in {@code entries} (empty for
  * a manual carb entry). Synced replace-all like the sport collections.
+ *
+ * <p>{@code deliveredByPump} marks a dose the pod gave rather than one the user
+ * injected. {@code splitOf} links a later part of a split bolus to the meal it
+ * belongs to, by that meal's {@code time}; null for every other meal. Both have
+ * to come back exactly as the app sent them: the app merges a pull with its own
+ * log by content, so a field lost here doubles the meal and its insulin.
  */
 @Entity
 @Table(name = "nutrition_meals")
@@ -39,4 +45,9 @@ public final class Meal {
   private double bolus;
   @Column(name = "entries", nullable = false, updatable = false, columnDefinition = "TEXT")
   private String entries;
+  @Column(name = "delivered_by_pump", nullable = false, updatable = false,
+    columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+  private boolean deliveredByPump;
+  @Column(name = "split_of", updatable = false)
+  private Long splitOf;
 }

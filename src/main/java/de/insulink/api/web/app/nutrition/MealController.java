@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Key;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -61,12 +62,26 @@ public final class MealController extends AppRestController {
   private Meal meal(UUID userId, ApiRequestBody entry) {
     return Meal.create(UUID.randomUUID(), userId, entry.getLong("time"),
       entry.getDouble("carbs"), entry.getInt("glucose"), entry.getDouble("bolus"),
-      entry.raw().getJSONArray("entries").toString());
+      entry.raw().getJSONArray("entries").toString(),
+      entry.has("delivered_by_pump") && entry.getBoolean("delivered_by_pump"),
+      entry.has("split_of") ? entry.getLong("split_of") : null);
   }
 
+  /**
+   * The meal in the app's own shape. The two optional fields are written only
+   * when set, exactly as the app writes them, because the app recognises a
+   * pulled meal as one it already holds by comparing that JSON.
+   */
   private Map<String, Object> information(Meal meal) {
-    return Map.of("time", meal.time(), "carbs", meal.carbs(),
-      "glucose", meal.glucose(), "bolus", meal.bolus(),
-      "entries", new JSONArray(meal.entries()).toList());
+    var information = new HashMap<String, Object>(Map.of("time", meal.time(),
+      "carbs", meal.carbs(), "glucose", meal.glucose(), "bolus", meal.bolus(),
+      "entries", new JSONArray(meal.entries()).toList()));
+    if (meal.deliveredByPump()) {
+      information.put("delivered_by_pump", true);
+    }
+    if (meal.splitOf() != null) {
+      information.put("split_of", meal.splitOf());
+    }
+    return information;
   }
 }
