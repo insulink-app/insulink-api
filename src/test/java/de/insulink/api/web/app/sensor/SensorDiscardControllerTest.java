@@ -136,4 +136,15 @@ final class SensorDiscardControllerTest {
     org.junit.jupiter.api.Assertions
       .assertEquals(1_700_000_500_000L, sensor.discardedAt());
   }
+
+  /** Paired again from the history: the app's next update revives it. */
+  @Test
+  void anUpdateClearsTheDiscard() {
+    var sensor = sensorOf(USER_ID);
+
+    sensor.discard(1_700_000_500_000L);
+    sensor.updateData("newer blob");
+
+    assertNull(sensor.discardedAt());
+  }
 }
