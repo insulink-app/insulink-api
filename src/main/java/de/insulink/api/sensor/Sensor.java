@@ -52,8 +52,14 @@ public final class Sensor {
   @Column(name = "discarded_at")
   private Long discardedAt;
 
+  /**
+   * Stores the app's newest identity blob. Only the app holding the sensor sends
+   * one, so an update also means the sensor is in use again: a sensor discarded
+   * and then paired again from the history must not stay stamped as gone.
+   */
   public void updateData(String newData) {
     this.data = newData;
+    this.discardedAt = null;
   }
 
   /**
