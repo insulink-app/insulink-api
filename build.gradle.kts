@@ -68,7 +68,7 @@ dependencies {
   implementation("com.maxmind.geoip2:geoip2:5.2.0")
   // geoip2 brings Jackson 2.22.1 (DoS in parser and databind); pinned until a
   // geoip2 release carries a fixed one.
-  implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
+  implementation(platform("com.fasterxml.jackson:jackson-bom:2.23.0"))
 
   implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20261107.1")
 }
