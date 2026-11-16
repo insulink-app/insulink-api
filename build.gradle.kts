@@ -70,7 +70,7 @@ dependencies {
   // geoip2 release carries a fixed one.
   implementation(platform("com.fasterxml.jackson:jackson-bom:2.23.0"))
 
-  implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20261107.1")
+  implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20261110.1")
 }
 
 tasks.test {
