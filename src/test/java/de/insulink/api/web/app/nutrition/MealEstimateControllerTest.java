@@ -2,6 +2,7 @@ package de.insulink.api.web.app.nutrition;
 
 import de.insulink.api.nutrition.estimate.MealEstimate;
 import de.insulink.api.nutrition.estimate.MealEstimateItem;
+import de.insulink.api.nutrition.estimate.MealEstimateLimit;
 import de.insulink.api.nutrition.estimate.MealEstimateProgress;
 import de.insulink.api.nutrition.estimate.MealEstimateRun;
 import de.insulink.api.nutrition.estimate.MealEstimateRuns;
@@ -121,6 +122,16 @@ final class MealEstimateControllerTest {
     estimatesToday(30L);
     send(JPEG).andExpect(jsonPath("$.error.code").value(1603));
     Mockito.verifyNoInteractions(estimator);
+  }
+
+  /** The app says when the subscription frees up again. */
+  @Test
+  void aUsageLimitAnswersWithItsReset() throws Exception {
+    estimatorAnswers(CompletableFuture.failedFuture(
+      new MealEstimateLimit(1763650800000L)));
+    send(JPEG)
+      .andExpect(jsonPath("$.error.code").value(1605))
+      .andExpect(jsonPath("$.resets_at").value(1763650800000L));
   }
 
   @Test

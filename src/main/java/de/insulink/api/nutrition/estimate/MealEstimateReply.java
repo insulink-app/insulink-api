@@ -31,6 +31,22 @@ public final class MealEstimateReply {
   }
 
   /**
+   * The usage limit, when the CLI reported one refusing the run: a
+   * {@code rate_limit_event} with status {@code rejected}, whose
+   * {@code resetsAt} is epoch seconds.
+   */
+  public Optional<MealEstimateLimit> limit() {
+    return Arrays.stream(stdout.split("\n"))
+      .map(this::parseLine)
+      .flatMap(Optional::stream)
+      .filter(line -> "rate_limit_event".equals(line.optString("type")))
+      .map(line -> line.optJSONObject("rate_limit_info"))
+      .filter(info -> info != null && "rejected".equals(info.optString("status")))
+      .map(info -> new MealEstimateLimit(info.optLong("resetsAt") * 1000))
+      .reduce((first, last) -> last);
+  }
+
+  /**
    * The CLI's last words, for the log when there is no estimate: the result
    * line says why ("Not logged in", a usage limit). Cut to 500 characters.
    */

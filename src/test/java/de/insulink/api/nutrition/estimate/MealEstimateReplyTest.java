@@ -59,4 +59,21 @@ final class MealEstimateReplyTest {
     Assertions.assertTrue(MealEstimateReply.create(refused).lastLine()
       .contains("Not logged in"));
   }
+
+  @Test
+  void aRejectedRateLimitEventIsTheLimitWithItsResetInMilliseconds() {
+    var refused = INIT + "\n{\"type\":\"rate_limit_event\",\"rate_limit_info\":"
+      + "{\"status\":\"rejected\",\"resetsAt\":1763650800,"
+      + "\"rateLimitType\":\"five_hour\"}}\n"
+      + "{\"type\":\"result\",\"is_error\":true}\n";
+    var limit = MealEstimateReply.create(refused).limit().orElseThrow();
+    Assertions.assertEquals(1763650800000L, limit.resetsAt());
+  }
+
+  @Test
+  void anAllowedRateLimitEventIsNoLimit() {
+    var allowed = "{\"type\":\"rate_limit_event\",\"rate_limit_info\":"
+      + "{\"status\":\"allowed_warning\",\"resetsAt\":1763650800}}";
+    Assertions.assertTrue(MealEstimateReply.create(allowed).limit().isEmpty());
+  }
 }

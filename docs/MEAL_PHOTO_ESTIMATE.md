@@ -11,7 +11,12 @@ the plate; the totals are their sums), and the `photo_id` of the stored photo.
 
 Errors: `1600` the image is not a JPEG of at most 2 MB, `1601` no estimate came
 back (CLI missing, token expired, usage limit, timeout after 120 s), `1603` the
-day's 30 estimates are used up, `1604` the app called the run off. `run_id` is
+day's 30 estimates are used up, `1604` the app called the run off, `1605` the
+subscription's usage limit refused the run, with `resets_at` (epoch ms) when it
+frees up again. The CLI reports that in its stream as a `rate_limit_event`
+whose `rate_limit_info.status` is `rejected` and `resetsAt` is epoch seconds;
+`MealEstimateReply.limit()` reads it, and a limit without `resetsAt` answers
+`1605` without `resets_at`. `run_id` is
 optional; without it the run cannot be cancelled.
 
 The estimate is a starting point. The app puts the carbohydrates into the bolus

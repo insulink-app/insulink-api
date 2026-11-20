@@ -2,6 +2,7 @@ package de.insulink.api.web.app.nutrition;
 
 import de.insulink.api.nutrition.estimate.MealEstimate;
 import de.insulink.api.nutrition.estimate.MealImage;
+import de.insulink.api.nutrition.estimate.MealEstimateLimit;
 import de.insulink.api.nutrition.estimate.MealEstimateProgress;
 import de.insulink.api.nutrition.estimate.MealEstimateRun;
 import de.insulink.api.nutrition.estimate.MealEstimateRuns;
@@ -29,6 +30,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Estimates a meal from a photo. The app puts the carbs into the bolus
@@ -68,7 +70,9 @@ public final class MealEstimateController extends AppRestController {
   /**
    * 1600 for a photo that is not a JPEG within the cap, 1601 when no estimate
    * came, 1603 once the day's estimates are used up, 1604 when the app called
-   * the run off ({@code run_id}, see {@link MealEstimateCancelController}).
+   * the run off ({@code run_id}, see {@link MealEstimateCancelController}),
+   * 1605 when the subscription's usage limit refused it ({@code resets_at},
+   * epoch ms, when known).
    */
   @AppEndpoint
   @RequestMapping(path = "/nutrition/estimate/", method = RequestMethod.POST)
@@ -129,11 +133,18 @@ public final class MealEstimateController extends AppRestController {
    * Logs why there is no estimate (the CLI's answer, or the database refusing
    * the photo) and answers 1601. The app can only say that it failed, so the
    * reason has to be in the server log. A run the app called off is no failure
-   * and answers 1604, to an app that no longer listens.
+   * and answers 1604, to an app that no longer listens. A usage limit answers
+   * 1605 with its reset, so the app can say when to try again.
    */
   private ApiResponse estimateFailed(MealEstimateRun run, Throwable failure) {
     if (run.cancelled()) {
       return ApiResponse.error(1604, "estimate cancelled");
+    }
+    var cause = failure instanceof CompletionException ? failure.getCause() : failure;
+    if (cause instanceof MealEstimateLimit limit) {
+      LOGGER.warn("Meal photo estimate refused: {}", limit.getMessage());
+      return ApiResponse.error(1605, "usage limit reached")
+        .expand(limit.information());
     }
     LOGGER.error("Meal photo estimate failed", failure);
     return ApiResponse.error(1601, "estimate unavailable");
