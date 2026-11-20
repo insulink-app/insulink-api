@@ -60,12 +60,17 @@ public final class MealPhotoEstimator {
     }
   }
 
-  /** The estimate, or a failure that carries what the CLI said instead. */
+  /**
+   * The estimate, else a {@link MealEstimateLimit} when the usage limit refused
+   * the run, else a failure that carries what the CLI said instead.
+   */
   private MealEstimate parse(String stdout) {
     var reply = MealEstimateReply.create(stdout);
     return reply.estimate()
-      .orElseThrow(() -> new CompletionException(
-        new IllegalStateException("no estimate, CLI said: " + reply.lastLine())));
+      .orElseThrow(() -> new CompletionException(reply.limit()
+        .map(IllegalStateException.class::cast)
+        .orElseGet(() -> new IllegalStateException(
+          "no estimate, CLI said: " + reply.lastLine()))));
   }
 
   /**
