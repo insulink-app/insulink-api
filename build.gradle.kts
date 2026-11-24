@@ -65,7 +65,7 @@ dependencies {
 
   implementation("com.nimbusds:nimbus-jose-jwt:10.10")
 
-  implementation("com.maxmind.geoip2:geoip2:5.2.0")
+  implementation("com.maxmind.geoip2:geoip2:5.3.0")
   // geoip2 brings Jackson 2.22.1 (DoS in parser and databind); pinned until a
   // geoip2 release carries a fixed one.
   implementation(platform("com.fasterxml.jackson:jackson-bom:2.23.0"))
